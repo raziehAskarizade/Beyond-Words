@@ -43,15 +43,3 @@ class GraphLoaderType1(NodeLabeledGraphLoader):
     def update_node_labels(self, node_y):
         pass
 
-    # def extract_random_sub_edges_graph(self, edge_count):
-    #     random_indices = torch.randint(0, self.edge_index.shape[1], (edge_count,), device=self.device)
-    #     my_new_edges = self.edge_index[:, random_indices]
-    #     node_indices = torch.unique(torch.reshape(my_new_edges, (-1,)))
-    #     my_new_nodes = self.nodes[node_indices]
-    #     my_new_labels = self.node_labels[node_indices]
-    #     map_values = torch.tensor((range(len(node_indices))))
-    #     node_map = pd.DataFrame(map_values, node_indices.cpu().numpy(), dtype=int)
-    #     cpu_edges = my_new_edges.cpu()
-    #     my_new_edges[0] = torch.tensor(np.squeeze(node_map.loc[cpu_edges[0]].values), device=self.device)
-    #     my_new_edges[1] = torch.tensor(np.squeeze(node_map.loc[cpu_edges[1]].values), device=self.device)
-    #     return my_new_nodes, my_new_labels, my_new_edges
