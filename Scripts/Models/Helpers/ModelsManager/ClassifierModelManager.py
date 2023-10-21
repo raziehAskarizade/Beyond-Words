@@ -5,7 +5,7 @@ from torch_geometric.nn import summary
 from tqdm import tqdm
 
 from Scripts.Models.Helpers.ModelsManager.ModelManager import ModelManager
-from Scripts.Models.Helpers.ClassifierModels.GATGCNClassifier import GNNClassifier
+from Scripts.Models.Helpers.ClassifierModels.GATGCNClassifierSimple import GNNClassifier
 from Scripts.Models.Helpers.GraphLoader.GraphLoaderType1 import GraphLoaderType1
 from Scripts.Models.Helpers.enums import Optimizer, LossType
 
