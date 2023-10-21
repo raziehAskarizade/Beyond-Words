@@ -1,4 +1,4 @@
-# ImageToKG
+# ColorIntelligence
 
 ## Objectives
 - Convert images to object and 'shape and color' knowledge graph.
