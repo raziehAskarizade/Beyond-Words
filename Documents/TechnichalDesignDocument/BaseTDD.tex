@@ -1,0 +1,38 @@
+\documentclass[a4paper, 10pt]{report}
+
+% ------------ Packages -------------
+\usepackage[utf8]{inputenc}
+\usepackage{enumitem}
+\usepackage{blindtext}
+\usepackage{hyperref}
+
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{geometry}
+\usepackage{xcolor}
+
+\newcommand{\chref}[3][blue]{\href{#2}{\color{#1}{#3}}}
+
+
+\geometry{
+	a4paper,
+	left=20mm,
+	right=20mm,
+	top=20mm,
+	bottom=20mm,
+}
+
+\title{Base Technical Design Document (TDD)}
+\author{Fardin Rastakhiz}
+\date{19 June 2023}
+
+\begin{document}
+    \maketitle
+    \section*{Links}
+        \subsection*{Important Documents link}
+            Document Summary:
+        \subsection*{Tasks Articles}
+            μKG library: \chref {https://paperswithcode.com/paper/m-text-kg-a-library-for-multi-source}{µKG: A Library for Multi-source Knowledge Graph Embeddings and Applications} \newline
+            KG to Text: \chref{https://paperswithcode.com/paper/text-generation-from-knowledge-graphs-with}{Text Generation from Knowledge Graphs with Graph Transformers} \newline
+            Sentiment Analysis:	\chref{https://paperswithcode.com/paper/cross-domain-aspect-extraction-using}{Cross-Domain Aspect Extraction using Transformers Augmented with Knowledge Graphs} \newline
+\end{document}
