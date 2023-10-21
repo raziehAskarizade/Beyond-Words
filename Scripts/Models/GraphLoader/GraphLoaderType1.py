@@ -1,8 +1,6 @@
 
-from Scripts.Models.Helpers.GraphLoader.GraphLoader import GraphLoader, NodeLabeledGraphLoader
+from Scripts.Models.GraphLoader.GraphLoader import NodeLabeledGraphLoader
 import torch
-import numpy as np
-import pandas as pd
 from sklearn.model_selection import train_test_split
 
 

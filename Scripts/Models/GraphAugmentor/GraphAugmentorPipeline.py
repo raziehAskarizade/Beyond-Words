@@ -3,7 +3,7 @@ import copy
 from GraphAugmentor import GraphAugmentor
 from collections import OrderedDict
 from uuid import UUID
-from Scripts.Models.Helpers.GraphLoader.GraphLoader import GraphLoader
+from Scripts.Models.GraphLoader.GraphLoader import GraphLoader
 
 
 class GraphAugmentorPipeline(GraphAugmentor):

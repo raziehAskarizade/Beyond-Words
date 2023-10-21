@@ -1,7 +1,7 @@
 import copy
 
 from GraphAugmentor import GraphAugmentor
-from Scripts.Models.Helpers.GraphLoader.GraphLoader import GraphLoader
+from Scripts.Models.GraphLoader.GraphLoader import GraphLoader
 import torch
 import pandas as pd
 import numpy as np

@@ -1,7 +1,6 @@
 import uuid
-from collections import OrderedDict
 
-from Scripts.Models.Helpers.GraphLoader.GraphLoader import GraphLoader
+from Scripts.Models.GraphLoader.GraphLoader import GraphLoader
 from abc import ABC, abstractmethod
 
 

@@ -1,9 +1,8 @@
 import copy
 
 from GraphAugmentor import GraphAugmentor
-from Scripts.Models.Helpers.GraphLoader.GraphLoader import GraphLoader
+from Scripts.Models.GraphLoader.GraphLoader import GraphLoader
 from torch_geometric.utils import augmentation
-from typing import Tuple, Optional, Union
 
 
 class IncreaseEdgeGraphAugmentor(GraphAugmentor):
