@@ -29,7 +29,6 @@ class GraphLoader(ABC):
         self.edge_indices_test = self.create_sub_graph_edges(self.test_indices)
         self.edge_indices_val = self.create_sub_graph_edges(self.test_indices)
 
-
     @abstractmethod
     def get_train_data(self):
         pass
