@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from Scripts.Models.Helpers.enums import Optimizer, LossType
+from Scripts.Helpers.enums import Optimizer, LossType
 import torch
 from torch import nn
 

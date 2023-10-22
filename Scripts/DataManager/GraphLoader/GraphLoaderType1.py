@@ -1,5 +1,5 @@
 
-from Scripts.Models.GraphLoader.GraphLoader import NodeLabeledGraphLoader
+from Scripts.DataManager.GraphLoader.GraphLoader import NodeLabeledGraphLoader
 import torch
 from sklearn.model_selection import train_test_split
 

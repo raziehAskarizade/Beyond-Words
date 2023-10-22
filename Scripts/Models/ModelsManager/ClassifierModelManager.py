@@ -6,8 +6,8 @@ from tqdm import tqdm
 
 from Scripts.Models.ModelsManager.ModelManager import ModelManager
 from Scripts.Models.ClassifierModels.GATGCNClassifierSimple import GNNClassifier
-from Scripts.Models.GraphLoader.GraphLoaderType1 import GraphLoaderType1
-from Scripts.Models.Helpers.enums import Optimizer, LossType
+from Scripts.DataManager.GraphLoader.GraphLoaderType1 import GraphLoaderType1
+from Scripts.Helpers.enums import Optimizer, LossType
 
 
 class ClassifierModelManager(ModelManager):

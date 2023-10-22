@@ -1,6 +1,6 @@
 import uuid
 
-from Scripts.Models.GraphLoader.GraphLoader import GraphLoader
+from Scripts.DataManager.GraphLoader.GraphLoader import GraphLoader
 from abc import ABC, abstractmethod
 
 

@@ -2,9 +2,7 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-from Scripts.Models.Helpers.Node import Node
-
-from typing import List
+from Scripts.Helpers.Node import Node
 
 
 class GraphLayer(nn.Module):

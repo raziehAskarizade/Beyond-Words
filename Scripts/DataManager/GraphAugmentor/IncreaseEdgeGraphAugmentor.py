@@ -1,7 +1,7 @@
 import copy
 
 from GraphAugmentor import GraphAugmentor
-from Scripts.Models.GraphLoader.GraphLoader import GraphLoader
+from Scripts.DataManager.GraphLoader.GraphLoader import GraphLoader
 from torch_geometric.utils import augmentation
 
 
