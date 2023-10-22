@@ -1,6 +1,6 @@
 import torch
 
-from GraphConstructor import GraphConstructor
+from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor
 from torch_geometric.data import Data
 import spacy
 from Scripts.Configs.ConfigClass import Config
