@@ -1,6 +1,6 @@
 {
   "spacy": {
-    "pipeline": "en_core_web_sm"
+    "pipeline": "en_core_web_lg"
   },
   "device": "cuda"
 }
