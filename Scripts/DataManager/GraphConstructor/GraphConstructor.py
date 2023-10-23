@@ -13,9 +13,6 @@ class GraphConstructor(ABC):
         self.config: Config = config
         self.text = text
         self.device = config.device
-        self.x, self.y, self.edge_index = self._generate_graph()
-        self.data = Data(x=self.x, y=self.y, edge_index=self.edge_index)
+        self.node_attr, self.node_label, self.edge_index, self.edge_attr, self.edge_label = None, None, None, None, None
+        self.data = Data(x=self.node_attr, y=self.node_label, edge_index=self.edge_index)
 
-    @abstractmethod
-    def _generate_graph(self) -> Tuple[torch.Tensor | Any, torch.Tensor | Any, torch.Tensor | Any]:
-        pass
