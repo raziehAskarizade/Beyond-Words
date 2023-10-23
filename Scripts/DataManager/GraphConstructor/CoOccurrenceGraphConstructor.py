@@ -10,30 +10,34 @@ import numpy as np
 
 class CoOccurrenceGraphConstructor(GraphConstructor):
 
-    def __init__(self, text: str, config: Config):
-        super(CoOccurrenceGraphConstructor, self).__init__(text, config)
+    def __init__(self, config: Config):
+        super(CoOccurrenceGraphConstructor, self).__init__(config)
         self.nlp = spacy.load(self.config.spacy.pipeline)
-        self.doc = self.nlp(self.text)
-        self.unique_words, self.unique_map = self.__get_unique_words()
-        self.co_occurrence_matrix = self.__get_co_occurrence_matrix()
-        self.unique_word_vectors = self.__get_unique_words_vector()
-        self.__create_graph()
 
-    def __get_unique_words(self):
+    def to_graph(self, text: str):
+        doc = self.nlp(text)
+        unique_words, unique_map = self.__get_unique_words(doc)
+        unique_word_vectors = self.__get_unique_words_vector(unique_words)
+        co_occurrence_matrix = self.__get_co_occurrence_matrix(doc, unique_words, unique_map)
+        return self.__create_graph(unique_word_vectors, co_occurrence_matrix)
+
+    @staticmethod
+    def __get_unique_words(doc):
         unique_words = []
-        for token in self.doc:
+        for token in doc:
             unique_words.append(token.lemma_)
         unique_words = pd.Series(list(set(unique_words)))
         unique_map = pd.Series(range(len(unique_words)), index=unique_words)
         return unique_words, unique_map
 
-    def __get_co_occurrence_matrix(self):
-        token_lemmas = [t.lemma_ for t in self.doc]
+    @staticmethod
+    def __get_co_occurrence_matrix(doc, unique_words, unique_map):
+        token_lemmas = [t.lemma_ for t in doc]
         n_gram = 4
-        dense_mat = torch.zeros((len(self.unique_words), len(self.unique_words)), dtype=torch.float32)
+        dense_mat = torch.zeros((len(unique_words), len(unique_words)), dtype=torch.float32)
         for i in range(len(token_lemmas) - n_gram):
             n_gram_data = list(set(token_lemmas[i:i + n_gram]))
-            n_gram_ids = self.unique_map[n_gram_data]
+            n_gram_ids = unique_map[n_gram_data]
             grid_ids = [(x, y) for x in n_gram_ids for y in n_gram_ids if x != y]
             grid_ids = torch.tensor(grid_ids, dtype=torch.int)
             dense_mat[grid_ids[:, 0], grid_ids[:, 1]] += 1
@@ -41,10 +45,10 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
         sparse_mat = dense_mat.to_sparse_coo()
         return sparse_mat
 
-    def __get_unique_words_vector(self):
-        unique_word_ids = [self.nlp.vocab.strings[self.unique_words[i]] for i in range(len(self.unique_words))]
-        unique_word_vectors = torch.zeros((len(self.unique_words), self.nlp.vocab.vectors_length), dtype=torch.float32)
-        for i in range(len(self.unique_words)):
+    def __get_unique_words_vector(self, unique_words):
+        unique_word_ids = [self.nlp.vocab.strings[unique_words[i]] for i in range(len(unique_words))]
+        unique_word_vectors = torch.zeros((len(unique_words), self.nlp.vocab.vectors_length), dtype=torch.float32)
+        for i in range(len(unique_words)):
             word_id = unique_word_ids[i]
             if word_id in self.nlp.vocab.vectors:
                 unique_word_vectors[i] = torch.tensor(self.nlp.vocab.vectors[word_id])
@@ -55,8 +59,9 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
                 unique_word_vectors[i] = torch.zeros((self.nlp.vocab.vectors_length,), dtype=torch.float32)
         return unique_word_vectors
 
-    def __create_graph(self):  # edge_label
-        self.node_attr = self.unique_word_vectors
-        self.edge_index = self.co_occurrence_matrix.indices()
-        self.edge_attr = self.co_occurrence_matrix.values()
-        self.graph = Data(x=self.node_attr, edge_index=self.edge_index,edge_attr=self.edge_attr)
+    @staticmethod
+    def __create_graph(unique_word_vectors, co_occurrence_matrix):  # edge_label
+        node_attr = unique_word_vectors
+        edge_index = co_occurrence_matrix.indices()
+        edge_attr = co_occurrence_matrix.values()
+        return Data(x=node_attr, edge_index=edge_index, edge_attr=edge_attr)
