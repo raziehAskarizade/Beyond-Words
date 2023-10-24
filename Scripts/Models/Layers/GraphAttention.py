@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-from Scripts.Helpers.Node import Node
+from Scripts.Utils.Node import Node
 
 
 class GraphAttentionLayer(nn.Module):

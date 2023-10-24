@@ -1,10 +1,10 @@
 
-from Scripts.DataManager.GraphLoader.GraphLoader import NodeLabeledGraphLoader
+from Scripts.DataManager.GraphLoader.GraphLoader import GraphLoader
 import torch
 from sklearn.model_selection import train_test_split
 
 
-class GraphLoaderType1(NodeLabeledGraphLoader):
+class NLabeledGraphLoader(GraphLoader):
 
     def __init__(self, nodes_x, nodes_y, edge_index, batch_size, device,
                  test_size=0.2, val_size=0.15, *args, **kwargs):
@@ -12,7 +12,8 @@ class GraphLoaderType1(NodeLabeledGraphLoader):
         self.batch_size = batch_size
         self.num_features = nodes_x.shape[1]
         self.num_classes = len(torch.unique(nodes_y))
-        super(GraphLoaderType1, self)\
+        self.node_labels = nodes_y.to(device)
+        super(NLabeledGraphLoader, self)\
             .__init__(nodes_x, nodes_y, edge_index, device, test_size, val_size, *args, **kwargs)
 
     def shuffle_train_test(self):

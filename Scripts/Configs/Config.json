@@ -2,5 +2,6 @@
   "spacy": {
     "pipeline": "en_core_web_lg"
   },
-  "device": "cuda"
+  "device": "cuda",
+  "data_root_dir": "C:\\Users\\fardin\\Projects\\ColorIntelligence\\data\\GraphData"
 }
