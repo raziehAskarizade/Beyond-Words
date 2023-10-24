@@ -12,6 +12,9 @@ class Config:
         if 'spacy' in config_data:
             self.spacy: SpacyConfig = SpacyConfig(config_data['spacy'])
 
+        if 'data_root_dir' in config_data:
+            self.data_root_dir = config_data['data_root_dir']
+
 
 class SpacyConfig:
     def __init__(self, json_data: dict):
