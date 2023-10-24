@@ -10,13 +10,16 @@ import numpy as np
 
 class DependencyGraphConstructor(GraphConstructor):
 
-    def __init__(self, text: str, config: Config):
+    def __init__(self, text: str, config: Config, use_node_dependencies: bool=False):
         super(DependencyGraphConstructor, self).__init__(text, config)
         self.nlp = spacy.load(self.config.spacy.pipeline)
         self.doc = self.nlp(self.text)
         self.unique_words, self.unique_map = self.__get_unique_words()
         self.unique_word_vectors = self.__get_unique_words_vector()
-        self.graph = self.__create_graph()
+        if use_node_dependencies:
+            self.graph = self.__create_graph_with_node_dependencies()
+        else:
+            self.graph = self.__create_graph()
 
     def __get_unique_words(self):
         unique_words = []
@@ -46,10 +49,18 @@ class DependencyGraphConstructor(GraphConstructor):
             # node_attr.append([token.text, token.pos_])
             if token.dep_ != 'ROOT':
                 edge_index.append([self.unique_map[token.head.lemma_], self.unique_map[token.lemma_]])
-                edge_attr.append(token.dep_)
+                dep_id = self.nlp.vocab.strings[token.dep_]
+                if dep_id in self.nlp.vocab.vectors:
+                    vectorized_dep = self.nlp.vocab.vectors[dep_id]
+                else:
+                    vectorized_dep = torch.zeros((self.nlp.vocab.vectors_length,), dtype=torch.float32)
+                edge_attr.append(vectorized_dep)
         self.node_attr = self.unique_word_vectors
         self.edge_index = torch.transpose(torch.tensor(edge_index, dtype=torch.long) , 0 , 1)
-        self.edge_attr = edge_attr # string data --- not numerical
+        self.edge_attr = edge_attr # vectorized edge attributes
         return Data(x=self.node_attr, edge_index=self.edge_index,edge_attr=self.edge_attr)
-
+    def __create_graph_with_node_dependencies(self):
+        # Not implemented
+        pass
+        
 
