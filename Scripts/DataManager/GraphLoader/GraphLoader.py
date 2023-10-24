@@ -6,22 +6,42 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from torch_geometric.utils import subgraph, train_test_split_edges
+from torch_geometric.data import Data
+
+from Scripts.Utils.GraphCollection.GraphCollection import GraphCollection
 
 
 class GraphLoader(ABC):
 
-    def __init__(self, nodes_x, edge_index, device,
-                 test_size=0.2, _val_size=0.15, *args, **kwargs):
-        self.nodes = nodes_x.to(device)
-        self.edge_index = edge_index.to(device)
-        self.edge_count = self.edge_index.shape[1]
-        self.node_count = len(self.nodes)
+    def __init__(self, device, test_size=0.2, val_size=0.15, *args, **kwargs):
+        self.test_size = test_size
+        self.val_size = val_size
+        self.device = device
+
+    @abstractmethod
+    def get_train_data(self):
+        pass
+
+    @abstractmethod
+    def get_test_data(self):
+        pass
+
+    @abstractmethod
+    def get_val_data(self):
+        pass
+
+
+class HomogeneousGraphLoader(GraphLoader):
+
+    def __init__(self, graph: Data, device, test_size=0.2, val_size=0.15, *args, **kwargs):
+        super(HomogeneousGraphLoader, self).__init__(device, test_size, val_size, *args, **kwargs)
+        self.graph = graph.to(device)
+        self.nodes = self.graph.x
+        self.edge_index = self.graph.edge_index
+        self.edge_count = self.graph.num_edges
+        self.node_count = self.graph.num_nodes
         self._sub_node_tensor_index = torch.arange(self.node_count)
         self._sub_edge_tensor_index = torch.arange(self.edge_count)
-
-        self.device = device
-        self._test_size = test_size
-        self._val_size = _val_size
 
         self.train_indices, self.test_indices, self.val_indices = self.create_split_indices()
 
@@ -70,8 +90,8 @@ class GraphLoader(ABC):
     def create_split_indices(self):
         self._sub_node_tensor_index = self._sub_node_tensor_index[
             torch.randperm(self._sub_node_tensor_index.shape[0], device=self.device)]
-        x_train, x_val = train_test_split(self._sub_node_tensor_index, test_size=self._val_size)
-        x_train, x_test = train_test_split(x_train, test_size=self._test_size)
+        x_train, x_val = train_test_split(self._sub_node_tensor_index, test_size=self.val_size)
+        x_train, x_test = train_test_split(x_train, test_size=self.test_size)
         return x_train, x_test, x_val
 
     def create_sub_graph_edges(self, node_mask):
@@ -93,12 +113,21 @@ class GraphLoader(ABC):
         self._sub_node_tensor_index = torch.unique(self._sub_edge_tensor_index)
 
 
-class NodeLabeledGraphLoader(GraphLoader, ABC):
+class CollectionGraphLoader(GraphLoader):
 
-    def __init__(self, nodes_x, nodes_y, edge_index, device, *args, **kwargs):
-        super(NodeLabeledGraphLoader, self).__init__(nodes_x, edge_index, device, *args, **kwargs)
-        self.node_labels = nodes_y.to(device)
+    def __init__(self, graphs: GraphCollection, device, test_size=0.2, val_size=0.15, *args, **kwargs):
+        super(CollectionGraphLoader, self).__init__(device, test_size, val_size, *args, **kwargs)
+        self.graphs = graphs
 
-    @abstractmethod
-    def update_node_labels(self, node_y):
+    def get_train_data(self):
         pass
+
+    def get_test_data(self):
+        pass
+
+    def get_val_data(self):
+        pass
+
+
+class KnowledgeGraphLoader(GraphLoader):
+    pass

@@ -6,13 +6,13 @@ from tqdm import tqdm
 
 from Scripts.Models.ModelsManager.ModelManager import ModelManager
 from Scripts.Models.ClassifierModels.GATGCNClassifierSimple import GNNClassifier
-from Scripts.DataManager.GraphLoader.GraphLoaderType1 import GraphLoaderType1
-from Scripts.Helpers.enums import Optimizer, LossType
+from Scripts.DataManager.GraphLoader.NLabeledGraphLoader import NLabeledGraphLoader
+from Scripts.Utils.enums import Optimizer, LossType
 
 
 class ClassifierModelManager(ModelManager):
 
-    def __init__(self, graph_handler: GraphLoaderType1, device=torch.device('cpu'),
+    def __init__(self, graph_handler: NLabeledGraphLoader, device=torch.device('cpu'),
                  lr=0.01, l2_norm=0.001, optimizer_type: Optimizer = Optimizer.ADAM,
                  loss_type: LossType = LossType.CROSS_ENTROPY):
         super(ClassifierModelManager, self).__init__(lr, l2_norm, device)
