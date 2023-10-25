@@ -13,7 +13,9 @@ class DependencyGraphConstructor(GraphConstructor):
     def __init__(self, text: str, config: Config, use_node_dependencies: bool=False):
         super(DependencyGraphConstructor, self).__init__(config)
         self.nlp = spacy.load(self.config.spacy.pipeline)
+        self.dependencies = self.nlp.get_pipe("parser").labels
         self.doc = self.nlp(text)
+        self.settings = {"tokens_dep_weight" : 1,"dep_tokens_weight" : 1, "token_token_weight" : 2}
         self.unique_words, self.unique_map = self.__get_unique_words()
         self.unique_word_vectors = self.__get_unique_words_vector()
         if use_node_dependencies:
@@ -66,23 +68,65 @@ class DependencyGraphConstructor(GraphConstructor):
                 else:
                     vectorized_dep = torch.zeros((self.nlp.vocab.vectors_length,), dtype=torch.float32)
                 # edge_attr.append(vectorized_dep)
-                edge_attr.append(1)
+                edge_attr.append(self.settings["tokens_dep_weight"])
             # adding sequential edges between tokens - uncomment the codes for vectorized edges
             if token.i != len(self.doc):
                 # using zero vectors for edge features
                 edge_index.append([token.i , token.i + 1])
                 # self.edge_attr.append(torch.zeros((self.nlp.vocab.vectors_length,), dtype=torch.float32))
-                edge_attr.append(2)
+                edge_attr.append(self.settings["token_token_weight"])
                 edge_index.append([token.i + 1 , token.i])
                 # self.edge_attr.append(torch.zeros((self.nlp.vocab.vectors_length,), dtype=torch.float32))
-                edge_attr.append(2)
+                edge_attr.append(self.settings["token_token_weight"])
         self.node_tokens = node_tokens
         self.node_attr = node_attr
         self.edge_index = torch.transpose(torch.tensor(edge_index, dtype=torch.long) , 0 , 1)
         self.edge_attr = edge_attr # vectorized edge attributes
         return Data(x=self.node_attr, edge_index=self.edge_index,edge_attr=self.edge_attr)
+    
+    def __find_dep_index(self , dependency : str):
+        for dep_idx in range(len(self.dependencies)):
+            if self.dependencies[dep_idx] == dependency:
+                return dep_idx
+        return -1 # means not found
+                
     def __create_graph_with_node_dependencies(self):
-        # Not implemented
-        pass
+        # nodes size is dependencies + tokens
+        dep_length = len(self.dependencies)
+        node_attr = torch.zeros((len(self.doc) + dep_length, self.nlp.vocab.vectors_length), dtype=torch.float32)
+        node_tokens = []
+        edge_index = []
+        edge_attr = []
+        for idx in range(dep_length):
+            # if vevtorizing of dependencies is needed, do it here
+            # node_attr[idx] = sth ...
+            node_tokens.append(self.dependencies[idx])
+        for token in self.doc:
+            node_tokens.append(token.lemma_)
+            token_id = self.nlp.vocab.strings[token.lemma_]
+            if token_id in self.nlp.vocab.vectors:
+                node_attr[token.i + dep_length] = torch.tensor(self.nlp.vocab.vectors[token_id])
+            if token.dep_ != 'ROOT':
+                dep_idx = self.__find_dep_index(token.dep_)
+                # not found protection
+                if dep_idx != -1:
+                    # edge from head token to dependency node
+                    edge_index.append([token.head.i + dep_length, dep_idx])
+                    edge_attr.append(self.settings["tokens_dep_weight"])
+                    # edge from dependency node to the token
+                    edge_index.append([dep_idx, token.i + dep_length])
+                    edge_attr.append(self.settings["dep_tokens_weight"])
+            # adding sequential edges between tokens - uncomment the codes for vectorized edges
+            if token.i != len(self.doc):
+                # using zero vectors for edge features
+                edge_index.append([token.i , token.i + 1])
+                edge_attr.append(self.settings["token_token_weight"])
+                edge_index.append([token.i + 1 , token.i])
+                edge_attr.append(self.settings["token_token_weight"])
+        self.node_tokens = node_tokens
+        self.node_attr = node_attr
+        self.edge_index = torch.transpose(torch.tensor(edge_index, dtype=torch.long) , 0 , 1)
+        self.edge_attr = edge_attr 
+        return Data(x=self.node_attr, edge_index=self.edge_index,edge_attr=self.edge_attr)
         
 
