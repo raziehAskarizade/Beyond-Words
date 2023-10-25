@@ -105,23 +105,23 @@ class DependencyGraphConstructor(GraphConstructor):
             node_tokens.append(token.lemma_)
             token_id = self.nlp.vocab.strings[token.lemma_]
             if token_id in self.nlp.vocab.vectors:
-                node_attr[token.i + dep_length] = torch.tensor(self.nlp.vocab.vectors[token_id])
+                node_attr[token.i + dep_length - 1] = torch.tensor(self.nlp.vocab.vectors[token_id])
             if token.dep_ != 'ROOT':
                 dep_idx = self.__find_dep_index(token.dep_)
                 # not found protection
                 if dep_idx != -1:
                     # edge from head token to dependency node
-                    edge_index.append([token.head.i + dep_length, dep_idx])
+                    edge_index.append([token.head.i + dep_length - 1, dep_idx])
                     edge_attr.append(self.settings["tokens_dep_weight"])
                     # edge from dependency node to the token
-                    edge_index.append([dep_idx, token.i + dep_length])
+                    edge_index.append([dep_idx, token.i + dep_length - 1])
                     edge_attr.append(self.settings["dep_tokens_weight"])
             # adding sequential edges between tokens - uncomment the codes for vectorized edges
             if token.i != len(self.doc):
                 # using zero vectors for edge features
-                edge_index.append([token.i , token.i + 1])
+                edge_index.append([token.i + dep_length - 1 , token.i + dep_length])
                 edge_attr.append(self.settings["token_token_weight"])
-                edge_index.append([token.i + 1 , token.i])
+                edge_index.append([token.i + dep_length , token.i + dep_length - 1])
                 edge_attr.append(self.settings["token_token_weight"])
         self.node_tokens = node_tokens
         self.node_attr = node_attr
