@@ -61,7 +61,6 @@ class TagsGraphConstructor(GraphConstructor):
             # if vevtorizing of dependencies is needed, do it here
             # node_attr[idx] = sth ...
         for token in doc:
-            node_tokens.append(token.lemma_)
             token_id = self.nlp.vocab.strings[token.lemma_]
             if token_id in self.nlp.vocab.vectors:
                 node_attr[token.i + tags_length - 1] = torch.tensor(self.nlp.vocab.vectors[token_id])
@@ -90,7 +89,7 @@ class TagsGraphConstructor(GraphConstructor):
         g = to_networkx(graph_data)
         layout = nx.spring_layout(g)
         nx.draw(g, pos=layout)
-        words_dict = {i: node_tokens[i] for i in range(len(self.node_tokens))}
+        words_dict = {i: node_tokens[i] for i in range(len(node_tokens))}
         # edge_labels_dict = {(graph_data.edge_index[0][i].item() , graph_data.edge_index[1][i].item()) : { "dep" : graph_data.edge_attr[i]} for i in range(len(graph_data.edge_attr))}
         # nx.set_edge_attributes(g , edge_labels_dict)
         nx.draw_networkx_labels(g, pos=layout, labels=words_dict)
