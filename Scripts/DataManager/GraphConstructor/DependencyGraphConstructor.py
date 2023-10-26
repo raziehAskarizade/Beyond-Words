@@ -119,7 +119,7 @@ class DependencyGraphConstructor(GraphConstructor):
                     edge_index.append([dep_idx, token.i + dep_length - 1])
                     edge_attr.append(self.settings["dep_tokens_weight"])
             # adding sequential edges between tokens - uncomment the codes for vectorized edges
-            if token.i != len(doc):
+            if token.i != len(doc) - 1:
                 # using zero vectors for edge features
                 edge_index.append([token.i + dep_length - 1 , token.i + dep_length])
                 edge_attr.append(self.settings["token_token_weight"])
