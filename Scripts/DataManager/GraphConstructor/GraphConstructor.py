@@ -99,7 +99,7 @@ class GraphConstructor(ABC):
         self._graphs[idx] = torch.load(path.join(self.save_path, f'{self.var.graphs_name[idx]}.pt'))
 
     def load_data_list(self, ids: List | Tuple | range | np.array | torch.Tensor | any):
-        if torch.max(torch.tensor(ids) < self.var.graph_num) == 1:
+        if torch.max(torch.tensor(ids) >= self.var.graph_num) == 1:
             print(f'Index is out of range, indices should be more than 0 and less than {self.var.graph_num}')
             return
 
