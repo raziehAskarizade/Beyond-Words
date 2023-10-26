@@ -10,53 +10,52 @@ import numpy as np
 
 class DependencyGraphConstructor(GraphConstructor):
 
-    def __init__(self, text: str, config: Config, use_node_dependencies: bool=False):
-        super(DependencyGraphConstructor, self).__init__(config)
-        self.nlp = spacy.load(self.config.spacy.pipeline)
+    class _Variables(GraphConstructor._Variables):
+        def __init__(self):
+            super(DependencyGraphConstructor._Variables, self).__init__()
+            self.nlp_pipeline: str = ''
+    def __init__(self, texts: List[str], save_path: str, config: Config,
+                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='' , use_node_dependencies: bool=False):
+
+        super(DependencyGraphConstructor, self)\
+            .__init__(texts, self._Variables(), save_path, config, lazy_construction, load_preprocessed_data,
+                      naming_prepend)
         self.dependencies = self.nlp.get_pipe("parser").labels
-        self.doc = self.nlp(text)
         self.settings = {"tokens_dep_weight" : 1,"dep_tokens_weight" : 1, "token_token_weight" : 2}
-        self.unique_words, self.unique_map = self.__get_unique_words()
-        self.unique_word_vectors = self.__get_unique_words_vector()
-        if use_node_dependencies:
-            self.graph = self.__create_graph_with_node_dependencies()
+        self.use_node_dependencies = use_node_dependencies
+        if self.load_preprocessed_data:
+            if not self.lazy_construction:
+                self.load_all_data()
+            else:
+                self.load_var()
         else:
-            self.graph = self.__create_graph()
+            self.var.nlp_pipeline = self.config.spacy.pipeline
+            self.var.graph_num = len(self.raw_data)
+            self.nlp = spacy.load(self.var.nlp_pipeline)
+
+            if not self.lazy_construction:
+                for i in range(len(self.raw_data)):
+                    if i not in self._graphs:
+                        if i % 100 == 0:
+                            print(f'i: {i}')
+                        self._graphs[i] = self.to_graph(self.raw_data[i])
+                        self.var.graphs_name[i] = f'{self.naming_prepend}_{i}'
+            self.save_all_data()
+
     def to_graph(self, text: str):
         doc = self.nlp(text)
-        unique_words, unique_map = self.__get_unique_words(doc)
-        if len(unique_words) < 2:
+        if len(doc) < 2:
             return
-        unique_word_vectors = self.__get_unique_words_vector(unique_words)
-        return self.__create_graph()
-    def __get_unique_words(self):
-        unique_words = []
-        for token in self.doc:
-            unique_words.append(token.lemma_)
-        unique_words = pd.Series(list(set(unique_words)))
-        unique_map = pd.Series(range(len(unique_words)), index=unique_words)
-        return unique_words, unique_map    
-    def __get_unique_words_vector(self):
-        unique_word_ids = [self.nlp.vocab.strings[self.unique_words[i]] for i in range(len(self.unique_words))]
-        unique_word_vectors = torch.zeros((len(self.unique_words), self.nlp.vocab.vectors_length), dtype=torch.float32)
-        for i in range(len(self.unique_words)):
-            word_id = unique_word_ids[i]
-            if word_id in self.nlp.vocab.vectors:
-                unique_word_vectors[i] = torch.tensor(self.nlp.vocab.vectors[word_id])
-            else:
-                # Write functionality to resolve word vector ((for now we use random vector)) 1000
-                # use pretrain model to generate vector (heavy)
-                # Over-fit a smaller model over spacy dictionary
-                unique_word_vectors[i] = torch.zeros((self.nlp.vocab.vectors_length,), dtype=torch.float32)
-        return unique_word_vectors
+        if self.use_node_dependencies:
+            self.graph = self.__create_graph_with_node_dependencies(doc)
+        else:
+            self.graph = self.__create_graph(doc)
 
-    def __create_graph(self):
-        node_attr = torch.zeros((len(self.doc), self.nlp.vocab.vectors_length), dtype=torch.float32)
-        node_tokens = []
+    def __create_graph(self , doc):
+        node_attr = torch.zeros((len(doc), self.nlp.vocab.vectors_length), dtype=torch.float32)
         edge_index = []
         edge_attr = []
-        for token in self.doc:
-            node_tokens.append(token.lemma_)
+        for token in doc:
             if token.dep_ != 'ROOT':
                 token_id = self.nlp.vocab.strings[token.lemma_]
                 if token_id in self.nlp.vocab.vectors:
@@ -70,7 +69,7 @@ class DependencyGraphConstructor(GraphConstructor):
                 # edge_attr.append(vectorized_dep)
                 edge_attr.append(self.settings["tokens_dep_weight"])
             # adding sequential edges between tokens - uncomment the codes for vectorized edges
-            if token.i != len(self.doc):
+            if token.i != len(doc):
                 # using zero vectors for edge features
                 edge_index.append([token.i , token.i + 1])
                 # self.edge_attr.append(torch.zeros((self.nlp.vocab.vectors_length,), dtype=torch.float32))
@@ -78,30 +77,25 @@ class DependencyGraphConstructor(GraphConstructor):
                 edge_index.append([token.i + 1 , token.i])
                 # self.edge_attr.append(torch.zeros((self.nlp.vocab.vectors_length,), dtype=torch.float32))
                 edge_attr.append(self.settings["token_token_weight"])
-        self.node_tokens = node_tokens
-        self.node_attr = node_attr
-        self.edge_index = torch.transpose(torch.tensor(edge_index, dtype=torch.long) , 0 , 1)
-        self.edge_attr = edge_attr # vectorized edge attributes
-        return Data(x=self.node_attr, edge_index=self.edge_index,edge_attr=self.edge_attr)
+        # self.node_tokens = node_tokens
+        # self.node_attr = node_attr
+        edge_index = torch.transpose(torch.tensor(edge_index, dtype=torch.long) , 0 , 1)
+        # self.edge_attr = edge_attr # vectorized edge attributes
+        return Data(x=node_attr, edge_index=edge_index,edge_attr=edge_attr)
     
     def __find_dep_index(self , dependency : str):
         for dep_idx in range(len(self.dependencies)):
             if self.dependencies[dep_idx] == dependency:
                 return dep_idx
         return -1 # means not found
-                
-    def __create_graph_with_node_dependencies(self):
+            
+    def __create_graph_with_node_dependencies(self , doc):
         # nodes size is dependencies + tokens
         dep_length = len(self.dependencies)
-        node_attr = torch.zeros((len(self.doc) + dep_length, self.nlp.vocab.vectors_length), dtype=torch.float32)
-        node_tokens = []
+        node_attr = torch.zeros((len(doc) + dep_length, self.nlp.vocab.vectors_length), dtype=torch.float32)
         edge_index = []
         edge_attr = []
-        for idx in range(dep_length):
-            # if vevtorizing of dependencies is needed, do it here
-            # node_attr[idx] = sth ...
-            node_tokens.append(self.dependencies[idx])
-        for token in self.doc:
+        for token in doc:
             node_tokens.append(token.lemma_)
             token_id = self.nlp.vocab.strings[token.lemma_]
             if token_id in self.nlp.vocab.vectors:
@@ -117,16 +111,31 @@ class DependencyGraphConstructor(GraphConstructor):
                     edge_index.append([dep_idx, token.i + dep_length - 1])
                     edge_attr.append(self.settings["dep_tokens_weight"])
             # adding sequential edges between tokens - uncomment the codes for vectorized edges
-            if token.i != len(self.doc):
+            if token.i != len(doc):
                 # using zero vectors for edge features
                 edge_index.append([token.i + dep_length - 1 , token.i + dep_length])
                 edge_attr.append(self.settings["token_token_weight"])
                 edge_index.append([token.i + dep_length , token.i + dep_length - 1])
                 edge_attr.append(self.settings["token_token_weight"])
-        self.node_tokens = node_tokens
-        self.node_attr = node_attr
+        # self.node_attr = node_attr
         self.edge_index = torch.transpose(torch.tensor(edge_index, dtype=torch.long) , 0 , 1)
-        self.edge_attr = edge_attr 
+        # self.edge_attr = edge_attr 
         return Data(x=self.node_attr, edge_index=self.edge_index,edge_attr=self.edge_attr)
+    def draw_graph(self , idx : int):
+        node_tokens = []
+        doc = self.nlp(self.raw_data[idx])
+        for d in self.dependencies:
+            node_tokens.append(d)
+        for t in doc:
+            node_tokens.append(t)
+        graph_data = self.get_graph(idx)
+        g = to_networkx(graph_data)
+        layout = nx.spring_layout(g)
+        nx.draw(g, pos=layout)
+        words_dict = {i: node_tokens[i] for i in range(len(self.node_tokens))}
+        # edge_labels_dict = {(graph_data.edge_index[0][i].item() , graph_data.edge_index[1][i].item()) : { "dep" : graph_data.edge_attr[i]} for i in range(len(graph_data.edge_attr))}
+        # nx.set_edge_attributes(g , edge_labels_dict)
+        nx.draw_networkx_labels(g, pos=layout, labels=words_dict)
+        # nx.draw_networkx_edge_labels(g, pos=layout)
         
 
