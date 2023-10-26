@@ -1,7 +1,10 @@
 import pickle
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
+import networkx as nx
 import pandas as pd
+from torch_geometric.utils import to_networkx
+
 from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor
 from torch_geometric.data import Data
 from Scripts.Configs.ConfigClass import Config
@@ -13,48 +16,36 @@ import os
 
 class CoOccurrenceGraphConstructor(GraphConstructor):
 
-    class _Variables:
-        nlp_pipeline: str = ''
-        text_num: int = 0
-        graphs_name: List[str] = []
-
-        def save_to_file(self, filename: str):
-            with open(filename, 'wb') as file:
-                pickle.dump(self, file)
-
-        @classmethod
-        def load_from_file(cls, filename: str):
-            with open(filename, 'rb') as file:
-                obj = pickle.load(file)
-            if isinstance(obj, cls):
-                return obj
-            else:
-                raise ValueError("Invalid file content. Unable to recreate the object.")
+    class _Variables(GraphConstructor._Variables):
+        def __init__(self):
+            super(CoOccurrenceGraphConstructor._Variables, self).__init__()
+            self.nlp_pipeline: str = ''
 
     def __init__(self, texts: List[str], save_path: str, config: Config,
                  lazy_construction=True, load_preprocessed_data=False, naming_prepend=''):
-        super(CoOccurrenceGraphConstructor, self).__init__(config)
-        self.texts = texts
-        self.save_path = os.path.join(self.config.data_root_dir, save_path)
-        self.var = self._Variables()
-        self.naming_prepend = naming_prepend
-        self.graphs:  List[Data] = []
-        if load_preprocessed_data:
-            self.load_data()
+
+        super(CoOccurrenceGraphConstructor, self)\
+            .__init__(texts, self._Variables(), save_path, config, lazy_construction, load_preprocessed_data,
+                      naming_prepend)
+        if self.load_preprocessed_data:
+
+            if not self.lazy_construction:
+                self.load_all_data()
+            else:
+                self.load_var()
         else:
             self.var.nlp_pipeline = self.config.spacy.pipeline
-            self.var.text_num = len(texts)
-            self.var.graphs_name = []
+            self.var.graph_num = len(self.raw_data)
             self.nlp = spacy.load(self.var.nlp_pipeline)
 
-            if not lazy_construction:
-                for i in range(len(texts)):
-                    if i not in self.graphs:
+            if not self.lazy_construction:
+                for i in range(len(self.raw_data)):
+                    if i not in self._graphs:
                         if i % 100 == 0:
                             print(f'i: {i}')
-                        self.graphs.append(self.to_graph(self.texts[i]))
-                        self.var.graphs_name.append(f'{self.naming_prepend}_{i}')
-            self.save_data()
+                        self._graphs[i] = self.to_graph(self.raw_data[i])
+                        self.var.graphs_name[i] = f'{self.naming_prepend}_{i}'
+            self.save_all_data()
 
     def to_graph(self, text: str):
         doc = self.nlp(text)
@@ -117,12 +108,9 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
         edge_attr = co_occurrence_matrix.values()
         return Data(x=node_attr, edge_index=edge_index, edge_attr=edge_attr)
 
-    def save_data(self):
-        for i in range(len(self.graphs)):
-            torch.save(self.graphs[i], os.path.join(self.save_path, f'{self.var.graphs_name[i]}.pt'))
-        self.var.save_to_file(os.path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
-
-    def load_data(self):
-        self.var = self.var.load_from_file(os.path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
-        for i in range(self.var.text_num):
-            self.graphs.append(torch.load(os.path.join(self.save_path, f'{self.var.graphs_name[i]}.pt')))
+    def draw_graph(self, idx: int):
+        g = to_networkx(self.get_graph(idx), to_undirected=True)
+        layout = nx.spring_layout(g)
+        nx.draw(g, pos=layout)
+        unique_words_dict = {i: self.unique_words[i] for i in range(len(self.unique_words))}
+        nx.draw_networkx_labels(self.get_graph(idx), pos=layout, labels=unique_words_dict)

@@ -12,17 +12,17 @@ class ModelManager(ABC):
         self.l2_norm = l2_norm
         self.history = dict()
 
-    @abstractmethod
-    def train(self, epoch_num: int = 100, lr: float = None, l2_norm: float = None, optimizer: Optimizer = None):
-        pass
-
-    @abstractmethod
-    def evaluate(self):
-        pass
-
-    @abstractmethod
-    def predict(self, node_x, edge_index):
-        pass
+    # @abstractmethod
+    # def train(self, epoch_num: int = 100, lr: float = None, l2_norm: float = None, optimizer: Optimizer = None):
+    #     pass
+    #
+    # @abstractmethod
+    # def evaluate(self):
+    #     pass
+    #
+    # @abstractmethod
+    # def predict(self, node_x, edge_index):
+    #     pass
 
     @staticmethod
     def _create_optimizer(model, lr, l2_norm, optimizer=Optimizer.ADAM):
