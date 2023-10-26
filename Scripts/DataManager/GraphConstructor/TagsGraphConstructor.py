@@ -1,11 +1,17 @@
+import pickle
+from typing import List, Dict, Tuple
 
+import networkx as nx
 import pandas as pd
+from torch_geometric.utils import to_networkx
+
 from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor
 from torch_geometric.data import Data
 from Scripts.Configs.ConfigClass import Config
 import spacy
 import torch
 import numpy as np
+import os
 
 
 class TagsGraphConstructor(GraphConstructor):
@@ -20,7 +26,6 @@ class TagsGraphConstructor(GraphConstructor):
         super(TagsGraphConstructor, self)\
             .__init__(texts, self._Variables(), save_path, config, lazy_construction, load_preprocessed_data,
                       naming_prepend)
-        self.tags = self.nlp.get_pipe("tagger").labels
         self.settings = {"tokens_tag_weight" : 1, "token_token_weight" : 2}
         if self.load_preprocessed_data:
             if not self.lazy_construction:
@@ -31,7 +36,7 @@ class TagsGraphConstructor(GraphConstructor):
             self.var.nlp_pipeline = self.config.spacy.pipeline
             self.var.graph_num = len(self.raw_data)
             self.nlp = spacy.load(self.var.nlp_pipeline)
-
+            self.tags = self.nlp.get_pipe("tagger").labels
             if not self.lazy_construction:
                 for i in range(len(self.raw_data)):
                     if i not in self._graphs:
