@@ -1,11 +1,19 @@
 
+import pickle
+from typing import List, Dict, Tuple
+
+import networkx as nx
 import pandas as pd
+from torch_geometric.utils import to_networkx
+
 from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor
 from torch_geometric.data import Data
 from Scripts.Configs.ConfigClass import Config
 import spacy
 import torch
 import numpy as np
+import os
+
 
 
 class DependencyGraphConstructor(GraphConstructor):
@@ -20,7 +28,6 @@ class DependencyGraphConstructor(GraphConstructor):
         super(DependencyGraphConstructor, self)\
             .__init__(texts, self._Variables(), save_path, config, lazy_construction, load_preprocessed_data,
                       naming_prepend)
-        self.dependencies = self.nlp.get_pipe("parser").labels
         self.settings = {"tokens_dep_weight" : 1,"dep_tokens_weight" : 1, "token_token_weight" : 2}
         self.use_node_dependencies = use_node_dependencies
         if self.load_preprocessed_data:
@@ -32,7 +39,7 @@ class DependencyGraphConstructor(GraphConstructor):
             self.var.nlp_pipeline = self.config.spacy.pipeline
             self.var.graph_num = len(self.raw_data)
             self.nlp = spacy.load(self.var.nlp_pipeline)
-
+            self.dependencies = self.nlp.get_pipe("parser").labels
             if not self.lazy_construction:
                 for i in range(len(self.raw_data)):
                     if i not in self._graphs:
@@ -42,14 +49,15 @@ class DependencyGraphConstructor(GraphConstructor):
                         self.var.graphs_name[i] = f'{self.naming_prepend}_{i}'
             self.save_all_data()
 
+
     def to_graph(self, text: str):
         doc = self.nlp(text)
         if len(doc) < 2:
             return
         if self.use_node_dependencies:
-            self.graph = self.__create_graph_with_node_dependencies(doc)
+            return self.__create_graph_with_node_dependencies(doc)
         else:
-            self.graph = self.__create_graph(doc)
+            return self.__create_graph(doc)
 
     def __create_graph(self , doc):
         node_attr = torch.zeros((len(doc), self.nlp.vocab.vectors_length), dtype=torch.float32)
@@ -96,7 +104,7 @@ class DependencyGraphConstructor(GraphConstructor):
         edge_index = []
         edge_attr = []
         for token in doc:
-            node_tokens.append(token.lemma_)
+            # node_tokens.append(token.lemma_)
             token_id = self.nlp.vocab.strings[token.lemma_]
             if token_id in self.nlp.vocab.vectors:
                 node_attr[token.i + dep_length - 1] = torch.tensor(self.nlp.vocab.vectors[token_id])
@@ -118,9 +126,9 @@ class DependencyGraphConstructor(GraphConstructor):
                 edge_index.append([token.i + dep_length , token.i + dep_length - 1])
                 edge_attr.append(self.settings["token_token_weight"])
         # self.node_attr = node_attr
-        self.edge_index = torch.transpose(torch.tensor(edge_index, dtype=torch.long) , 0 , 1)
+        edge_index = torch.transpose(torch.tensor(edge_index, dtype=torch.long) , 0 , 1)
         # self.edge_attr = edge_attr 
-        return Data(x=self.node_attr, edge_index=self.edge_index,edge_attr=self.edge_attr)
+        return Data(x=node_attr, edge_index=edge_index,edge_attr=edge_attr)
     def draw_graph(self , idx : int):
         node_tokens = []
         doc = self.nlp(self.raw_data[idx])
@@ -132,7 +140,7 @@ class DependencyGraphConstructor(GraphConstructor):
         g = to_networkx(graph_data)
         layout = nx.spring_layout(g)
         nx.draw(g, pos=layout)
-        words_dict = {i: node_tokens[i] for i in range(len(self.node_tokens))}
+        words_dict = {i: node_tokens[i] for i in range(len(node_tokens))}
         # edge_labels_dict = {(graph_data.edge_index[0][i].item() , graph_data.edge_index[1][i].item()) : { "dep" : graph_data.edge_attr[i]} for i in range(len(graph_data.edge_attr))}
         # nx.set_edge_attributes(g , edge_labels_dict)
         nx.draw_networkx_labels(g, pos=layout, labels=words_dict)
