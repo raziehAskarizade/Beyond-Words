@@ -3,10 +3,13 @@ import pickle
 from os import path
 from abc import ABC, abstractmethod
 
+import networkx as nx
 import numpy as np
 import torch
 from torch_geometric.data import Data
 from typing import Tuple, Any, List, Dict
+
+from torch_geometric.utils import to_networkx
 
 from Scripts.Configs.ConfigClass import Config
 
@@ -102,3 +105,8 @@ class GraphConstructor(ABC):
 
         for i in ids:
             self._graphs[i] = torch.load(path.join(self.save_path, f'{self.var.graphs_name[i]}.pt'))
+
+    def draw_graph(self, idx: int):
+        g = to_networkx(self.get_graph(idx), to_undirected=True)
+        layout = nx.spring_layout(g)
+        nx.draw(g, pos=layout)

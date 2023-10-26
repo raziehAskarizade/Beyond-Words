@@ -1,7 +1,10 @@
 import pickle
 from typing import List, Dict, Tuple
 
+import networkx as nx
 import pandas as pd
+from torch_geometric.utils import to_networkx
+
 from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor
 from torch_geometric.data import Data
 from Scripts.Configs.ConfigClass import Config
@@ -17,7 +20,6 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
         def __init__(self):
             super(CoOccurrenceGraphConstructor._Variables, self).__init__()
             self.nlp_pipeline: str = ''
-            self.text_num: int = 0
 
     def __init__(self, texts: List[str], save_path: str, config: Config,
                  lazy_construction=True, load_preprocessed_data=False, naming_prepend=''):
@@ -33,7 +35,7 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
                 self.load_var()
         else:
             self.var.nlp_pipeline = self.config.spacy.pipeline
-            self.var.text_num = len(self.raw_data)
+            self.var.graph_num = len(self.raw_data)
             self.nlp = spacy.load(self.var.nlp_pipeline)
 
             if not self.lazy_construction:
@@ -105,3 +107,10 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
         edge_index = co_occurrence_matrix.indices()
         edge_attr = co_occurrence_matrix.values()
         return Data(x=node_attr, edge_index=edge_index, edge_attr=edge_attr)
+
+    def draw_graph(self, idx: int):
+        g = to_networkx(self.get_graph(idx), to_undirected=True)
+        layout = nx.spring_layout(g)
+        nx.draw(g, pos=layout)
+        unique_words_dict = {i: self.unique_words[i] for i in range(len(self.unique_words))}
+        nx.draw_networkx_labels(self.get_graph(idx), pos=layout, labels=unique_words_dict)
