@@ -3,5 +3,5 @@
     "pipeline": "en_core_web_lg"
   },
   "device": "cuda",
-  "data_root_dir": "C:\\Users\\fardin\\Projects\\ColorIntelligence\\data\\GraphData"
+  "data_root_dir": "C:\\Users\\fardin\\Projects\\ColorIntelligence\\data"
 }
