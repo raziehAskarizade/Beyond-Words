@@ -21,11 +21,11 @@ class GraphConstructorDataset(Dataset):
     def __len__(self):
         return self.graph_constructor.var.graph_num
 
-
+DataLoader
 class GLabeledGraphLoader(GraphLoader):
 
     def __init__(self, graph_constructor: GraphConstructor, graph_label, batch_size, device,
-                 test_size=0.2, val_size=0.15, num_workers=2, drop_last=True, *args, **kwargs):
+                 test_size=0.2, val_size=0.2, num_workers=2, drop_last=True, *args, **kwargs):
         self.device = device
         self.batch_size = batch_size
         sample_graph = graph_constructor.get_first()
@@ -38,11 +38,11 @@ class GLabeledGraphLoader(GraphLoader):
         self.__train_dataset, self.__val_dataset, self.__test_dataset =\
             random_split(self.dataset, [1-val_size-test_size, val_size, test_size])
         self.__train_dataloader = DataLoader(self.__train_dataset, batch_size=batch_size, drop_last=drop_last,
-                                             shuffle=True, num_workers=num_workers)
+                                             shuffle=True, num_workers=num_workers, persistent_workers=True)
         self.__val_dataloader = DataLoader(self.__val_dataset, batch_size=batch_size, drop_last=drop_last,
-                                           shuffle=True, num_workers=num_workers)
+                                           num_workers=num_workers, persistent_workers=True)
         self.__test_dataloader = DataLoader(self.__test_dataset, batch_size=batch_size, drop_last=drop_last,
-                                            shuffle=True, num_workers=num_workers)
+                                            num_workers=num_workers, persistent_workers=True)
 
     def get_train_data(self):
         return self.__train_dataloader
