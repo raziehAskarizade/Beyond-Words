@@ -12,6 +12,15 @@ from typing import Tuple, Any, List, Dict
 from torch_geometric.utils import to_networkx
 
 from Scripts.Configs.ConfigClass import Config
+from enum import Enum
+from flags import Flags
+
+
+class TextGraphType(Flags):
+    CO_OCCURRENCE = 1
+    DEPENDENCY = 2
+    SEQUENTIAL = 4
+    TAGS = 8
 
 
 class GraphConstructor(ABC):
