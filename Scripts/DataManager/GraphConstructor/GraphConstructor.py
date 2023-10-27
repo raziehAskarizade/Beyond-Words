@@ -77,10 +77,10 @@ class GraphConstructor(ABC):
             for idx in not_loaded_ids:
                 self._graphs[idx] = self.to_graph(self.raw_data[idx])
                 self.var.graphs_name[idx] = f'{self.naming_prepend}_{idx}'
-        return {idx:self._graphs[idx] for idx in ids}
+        return {idx: self._graphs[idx] for idx in ids}
 
     def get_first(self):
-        return self._graphs[next(iter(self._graphs))]
+        return self.get_graph(0)
 
     def save_all_data(self):
         for i in range(len(self._graphs)):
