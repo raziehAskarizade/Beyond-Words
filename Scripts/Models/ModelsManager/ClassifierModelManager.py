@@ -152,6 +152,3 @@ class ClassifierModelManager(ModelManager):
         if optimizer:
             self.optimizer_type = optimizer
         self.optimizer = ModelManager._create_optimizer(self.model, self.lr, self.l2_norm, self.optimizer_type)
-
-
-
