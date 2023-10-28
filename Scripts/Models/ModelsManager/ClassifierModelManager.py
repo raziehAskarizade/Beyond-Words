@@ -1,56 +1,15 @@
-from typing import Any
 
 import torch
 import torch.nn.functional as F
-from pytorch_lightning.utilities.types import OptimizerLRScheduler, STEP_OUTPUT
-
 from torch_geometric.nn import summary
 from tqdm import tqdm
-
+from Scripts.Models.LightningModels.LightningModels import BaseLightningModel
 from Scripts.Models.ModelsManager.ModelManager import ModelManager
 from Scripts.Models.ClassifierModels.GATGCNClassifierSimple import GNNClassifier
 from Scripts.DataManager.GraphLoader.NLabeledGraphLoader import NLabeledGraphLoader
 from Scripts.Utils.enums import Optimizer, LossType
 
 import lightning as L
-
-
-class LightningModel(L.LightningModule):
-
-    def __init__(self, model, optimizer, loss_func):
-        super(LightningModel, self).__init__()
-        self.optimizer = optimizer
-        self.model = model
-        self.loss_func = loss_func
-
-    def forward(self, nodes, edge_index, *args, **kwargs):
-        return self.model(nodes, edge_index)
-
-    def training_step(self, data_batch, *args, **kwargs) :
-        nodes, labels, edge_index = data_batch
-        pred_labels = self(nodes, edge_index)
-        loss = self.loss_func(pred_labels, labels)
-        self.log('training_loss', loss)
-        return loss
-
-    def validation_step(self, data_batch, *args, **kwargs):
-        nodes, labels, edge_index = data_batch
-        pred_labels = self(nodes, edge_index)
-        loss = self.loss_func(pred_labels, labels)
-        self.log('val_loss', loss)
-
-    # def test_step(self, data_batch, *args: Any, **kwargs: Any) -> STEP_OUTPUT:
-    #     nodes, labels, edge_index = data_batch
-    #     pred_labels = self(nodes, edge_index)
-    #     loss = F.cross_entropy(pred_labels, labels)
-    #     self.log('test_loss', loss)
-
-    def predict_step(self, data_batch, *args: Any, **kwargs: Any) -> Any:
-        nodes, labels, edge_index = data_batch
-        return self(nodes, edge_index)
-
-    def configure_optimizers(self) -> OptimizerLRScheduler:
-        return self.optimizer
 
 
 class ClassifierModelManager(ModelManager):
@@ -62,14 +21,10 @@ class ClassifierModelManager(ModelManager):
         self.graph_handler = graph_handler
         self.num_output_classes = self.graph_handler.num_classes
         self.num_input_features = self.graph_handler.num_features
-
         self.loss_type = loss_type
         self.optimizer_type = optimizer_type
         self.model, self.optimizer, self.loss_func = self.__create_model(lr, l2_norm, optimizer_type, loss_type)
-
-        self.lightning_model = LightningModel(self.model, self.optimizer, self.loss_func)
-
-
+        self.lightning_model = BaseLightningModel(self.model, self.optimizer, self.loss_func)
 
     def train(self, epoch_num: int = 100, lr: float = None, l2_norm: float = None, optimizer: Optimizer = None):
 
