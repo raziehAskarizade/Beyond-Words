@@ -104,6 +104,11 @@ class TagsGraphConstructor(GraphConstructor):
         # nx.set_edge_attributes(g , edge_labels_dict)
         nx.draw_networkx_labels(g, pos=layout, labels=words_dict)
         # nx.draw_networkx_edge_labels(g, pos=layout)
-
+    def to_graph_indexed(self, text: str):
+        # TODO : implement this
+        pass
+    def convert_indexed_nodes_to_vector_nodes(self, graph):
+        # TODO : implement this
+        pass
         
 

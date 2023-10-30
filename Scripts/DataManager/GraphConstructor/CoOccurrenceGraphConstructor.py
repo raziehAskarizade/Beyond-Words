@@ -22,21 +22,24 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
             self.nlp_pipeline: str = ''
 
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                 lazy_construction=True, load_preprocessed_data=False, naming_prepend=''):
+                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='' , use_compression=True):
 
         super(CoOccurrenceGraphConstructor, self)\
             .__init__(texts, self._Variables(), save_path, config, lazy_construction, load_preprocessed_data,
-                      naming_prepend)
+                      naming_prepend , use_compression)
+        self.var.nlp_pipeline = self.config.spacy.pipeline
+        self.var.graph_num = len(self.raw_data)
+        self.nlp = spacy.load(self.var.nlp_pipeline)
         if self.load_preprocessed_data:
 
             if not self.lazy_construction:
-                self.load_all_data()
+                if self.use_compression:
+                    self.load_all_data_comppressed()
+                else:
+                    self.load_all_data()
             else:
                 self.load_var()
         else:
-            self.var.nlp_pipeline = self.config.spacy.pipeline
-            self.var.graph_num = len(self.raw_data)
-            self.nlp = spacy.load(self.var.nlp_pipeline)
 
             if not self.lazy_construction:
                 for i in range(len(self.raw_data)):
@@ -100,6 +103,20 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
                 # Over-fit a smaller model over spacy dictionary
                 unique_word_vectors[i] = torch.zeros((self.nlp.vocab.vectors_length,), dtype=torch.float32)
         return unique_word_vectors
+    
+    def __get_unique_words_ids(self, unique_words):
+        unique_word_ids = [self.nlp.vocab.strings[unique_words[i]] for i in range(len(unique_words))]
+        unique_word_indices = [None for i in range(len(unique_words))]
+        for i in range(len(unique_words)):
+            word_id = unique_word_ids[i]
+            if word_id in self.nlp.vocab.vectors:
+                unique_word_indices[i] = word_id
+            else:
+                # Write functionality to resolve word vector ((for now we use random vector)) 1000
+                # use pretrain model to generate vector (heavy)
+                # Over-fit a smaller model over spacy dictionary
+                unique_word_indices[i] = torch.zeros((self.nlp.vocab.vectors_length,), dtype=torch.float32)
+        return unique_word_indices
 
     @staticmethod
     def __create_graph(unique_word_vectors, co_occurrence_matrix):  # edge_label
@@ -107,7 +124,21 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
         edge_index = co_occurrence_matrix.indices()
         edge_attr = co_occurrence_matrix.values()
         return Data(x=node_attr, edge_index=edge_index, edge_attr=edge_attr)
-
+    
+    def to_graph_indexed(self, text: str):
+        doc = self.nlp(text)
+        unique_words, unique_map = self.__get_unique_words(doc)
+        if len(unique_words) < 2:
+            return
+        unique_word_ids = self.__get_unique_words_ids(unique_words)
+        co_occurrence_matrix = self.__get_co_occurrence_matrix(doc, unique_words, unique_map)
+        return self.__create_graph(unique_word_ids, co_occurrence_matrix)
+    def convert_indexed_nodes_to_vector_nodes(self, graph):
+        nodes = torch.zeros((len(graph.x), self.nlp.vocab.vectors_length), dtype=torch.float32)
+        for i in range(len(graph.x)):
+            if graph.x[i] in self.nlp.vocab.vectors:
+                nodes[i] = torch.tensor(self.nlp.vocab.vectors[graph.x[i]])
+        return Data(x=nodes , edge_index=graph.edge_index , edge_attr=graph.edge_attr)
     def draw_graph(self, idx: int):
         g = to_networkx(self.get_graph(idx), to_undirected=True)
         layout = nx.spring_layout(g)
