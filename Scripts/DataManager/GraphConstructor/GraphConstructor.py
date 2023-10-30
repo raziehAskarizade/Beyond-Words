@@ -44,7 +44,7 @@ class GraphConstructor(ABC):
                 raise ValueError("Invalid file content. Unable to recreate the object.")
 
     def __init__(self, raw_data, variables: _Variables, save_path: str, config: Config, lazy_construction: bool,
-                 load_preprocessed_data: bool, naming_prepend: str = ''):
+                 load_preprocessed_data: bool, naming_prepend: str = '' , use_compression = True):
         self.raw_data = raw_data
         self.config: Config = config
         self.lazy_construction = lazy_construction
@@ -53,18 +53,32 @@ class GraphConstructor(ABC):
         self.var = variables
         self.save_path = os.path.join(config.root, save_path)
         self.naming_prepend = naming_prepend
+        self.use_compression = use_compression
         # self.node_attr, self.node_label, self.edge_index, self.edge_attr, self.edge_label = None, None, None, None, None
         # self.data = Data(x=self.node_attr, y=self.node_label, edge_index=self.edge_index)
-        self._graphs: Dict[int, Data] = {}
+        self._graphs: List = [None for r in raw_data]
 
     @abstractmethod
     def to_graph(self, raw_data):
         pass
+    
+    # below method returns torch geometric Data model with indexed nodes from spacy vocab
+    @abstractmethod
+    def to_graph_indexed(self, raw_data):
+        pass
+    
+    # below method gets graph loaded from indexed files and gives complete graph
+    @abstractmethod
+    def convert_indexed_nodes_to_vector_nodes(self , graph):
+        pass
 
     def get_graph(self, idx: int):
-        if idx not in self._graphs:
+        if self._graphs[idx] is None:
             if self.load_preprocessed_data:
-                self.load_data(idx)
+                if self.use_compression:
+                    self.load_data_compressed(idx)
+                else:
+                    self.load_data(idx)
             else:
                 self._graphs[idx] = self.to_graph(self.raw_data[idx])
                 self.var.graphs_name[idx] = f'{self.naming_prepend}_{idx}'
@@ -116,6 +130,35 @@ class GraphConstructor(ABC):
             self._graphs[i] = torch.load(path.join(self.save_path, f'{self.var.graphs_name[i]}.pt'))
 
     def draw_graph(self, idx: int):
+        print(self._graphs[idx].x[0])
         g = to_networkx(self.get_graph(idx), to_undirected=True)
         layout = nx.spring_layout(g)
         nx.draw(g, pos=layout)
+    def save_all_data_compressed(self):
+        for i in range(len(self._graphs)):
+            graph = self.to_graph_indexed(self.raw_data[i])
+            torch.save(graph, path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt'))
+            # nodes_array = np.array(graph.x)
+            # edge_index = graph.edge_index.to('cpu').numpy()
+            # edge_attr = np.array(graph.edge_attr)
+            # f = gzip.GzipFile(path.join(self.save_path, f'{self.var.graphs_name[i]}_nodes.npy.gz'), "w")
+            # np.save(file=f, arr=nodes_array)
+            # f.close()
+            # f = gzip.GzipFile(path.join(self.save_path, f'{self.var.graphs_name[i]}_edge_index.npy.gz'), "w")
+            # np.save(file=f, arr=edge_index)
+            # f.close()
+            # f = gzip.GzipFile(path.join(self.save_path, f'{self.var.graphs_name[i]}_edge_attr.npy.gz'), "w")
+            # np.save(file=f, arr=edge_attr)
+            # f.close()
+        self.var.save_to_file(path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
+    def load_all_data_comppressed(self):
+        self.var = self.var.load_from_file(path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
+        for i in range(self.var.graph_num):
+            self._graphs[i] = self.convert_indexed_nodes_to_vector_nodes(torch.load(path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt')))
+    def save_data_compressed(self , idx: int):
+        graph = self.to_graph_indexed(self.raw_data[idx])
+        torch.save(graph, path.join(self.save_path, f'{self.var.graphs_name[idx]}_compressed.pt'))
+    def load_data_compressed(self , idx: int):
+        self._graphs[idx] = self.convert_indexed_nodes_to_vector_nodes(torch.load(path.join(self.save_path, f'{self.var.graphs_name[idx]}_compressed.pt')))
+        
+        
