@@ -51,7 +51,7 @@ class GraphConstructor(ABC):
         self.load_preprocessed_data = load_preprocessed_data
         self.device = config.device
         self.var = variables
-        self.save_path = os.path.join(config.data_root_dir, save_path)
+        self.save_path = os.path.join(config.root, save_path)
         self.naming_prepend = naming_prepend
         # self.node_attr, self.node_label, self.edge_index, self.edge_attr, self.edge_label = None, None, None, None, None
         # self.data = Data(x=self.node_attr, y=self.node_label, edge_index=self.edge_index)

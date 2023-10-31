@@ -2,6 +2,10 @@
   "spacy": {
     "pipeline": "en_core_web_lg"
   },
+<<<<<<< Updated upstream
   "device": "cuda",
   "data_root_dir": "C:\\Users\\fardin\\Projects\\ColorIntelligence\\data"
+=======
+  "device": "cuda"
+>>>>>>> Stashed changes
 }
