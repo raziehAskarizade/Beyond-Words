@@ -6,7 +6,7 @@ import pandas as pd
 from torch_geometric.utils import to_networkx
 
 from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor
-from torch_geometric.data import Data
+from torch_geometric.data import Data , HeteroData
 from Scripts.Configs.ConfigClass import Config
 import spacy
 import torch
@@ -57,10 +57,17 @@ class TagsGraphConstructor(GraphConstructor):
                 return tag_idx
         return -1 # means not found
     def __create_graph(self , doc):
+        
+        data = HeteroData()
         tags_length = len(self.tags)
-        node_attr = torch.zeros((len(doc) + tags_length, self.nlp.vocab.vectors_length), dtype=torch.float32)
-        edge_index = []
-        edge_attr = []
+        data['tag'].x = torch.zeros((tags_length, self.nlp.vocab.vectors_length), dtype=torch.float32)
+        data['word'].x = torch.zeros((len(doc) , self.nlp.vocab.vectors_length), dtype=torch.float32)
+        word_tag_edge_index = []
+        tag_word_edge_index = []
+        word_word_edge_index = []
+        word_tag_edge_attr = []
+        tag_word_edge_attr = []
+        word_word_edge_attr = []
         
         # for idx in range(tags_length):
             # if vevtorizing of dependencies is needed, do it here
@@ -68,26 +75,27 @@ class TagsGraphConstructor(GraphConstructor):
         for token in doc:
             token_id = self.nlp.vocab.strings[token.lemma_]
             if token_id in self.nlp.vocab.vectors:
-                node_attr[token.i + tags_length - 1] = torch.tensor(self.nlp.vocab.vectors[token_id])
+                data['word'].x[token.i] = torch.tensor(self.nlp.vocab.vectors[token_id])
             tag_idx = self.__find_tag_index(token.tag_)
             if tag_idx != -1:
-                edge_index.append([token.i + tags_length - 1 , tag_idx])
-                edge_attr.append(self.settings["tokens_tag_weight"])
-                edge_index.append([tag_idx , token.i + tags_length - 1])
-                edge_attr.append(self.settings["tokens_tag_weight"])
+                word_tag_edge_index.append([token.i , tag_idx])
+                word_tag_edge_attr.append(self.settings["tokens_tag_weight"])
+                tag_word_edge_index.append([tag_idx , token.i])
+                tag_word_edge_attr.append(self.settings["tokens_tag_weight"])
             # adding sequential edges between tokens - uncomment the codes for vectorized edges
             if token.i != len(doc) - 1:
                 # using zero vectors for edge features
-                edge_index.append([token.i + tags_length - 1 , token.i + 1])
-                # self.edge_attr.append(torch.zeros((self.nlp.vocab.vectors_length,), dtype=torch.float32))
-                edge_attr.append(self.settings["token_token_weight"])
-                edge_index.append([token.i + 1, token.i + tags_length - 1])
-                # self.edge_attr.append(torch.zeros((self.nlp.vocab.vectors_length,), dtype=torch.float32))
-                edge_attr.append(self.settings["token_token_weight"])
-        # self.node_attr = node_attr
-        edge_index = torch.transpose(torch.tensor(edge_index, dtype=torch.long) , 0 , 1)
-        # self.edge_attr = edge_attr # vectorized edge attributes
-        return Data(x=node_attr, edge_index=edge_index,edge_attr=edge_attr)
+                word_word_edge_index.append([token.i , token.i + 1])
+                word_word_edge_attr.append(self.settings["token_token_weight"])
+                word_word_edge_index.append([token.i + 1 , token.i])
+                word_word_edge_attr.append(self.settings["token_token_weight"])
+        data['tag' , 'tag_word' , 'word'].edge_index = torch.transpose(torch.tensor(tag_word_edge_index, dtype=torch.long) , 0 , 1)
+        data['word' , 'word_tag' , 'tag'].edge_index = torch.transpose(torch.tensor(word_tag_edge_index, dtype=torch.long) , 0 , 1)
+        data['word' , 'seq' , 'word'].edge_index = torch.transpose(torch.tensor(word_word_edge_index, dtype=torch.long) , 0 , 1)
+        data['tag' , 'tag_word' , 'word'].edge_attr = tag_word_edge_attr
+        data['word' , 'word_tag' , 'tag'].edge_attr = word_tag_edge_attr
+        data['word' , 'seq' , 'word'].edge_attr = word_word_edge_attr
+        return data
     def draw_graph(self , idx : int):
         node_tokens = []
         doc = self.nlp(self.raw_data[idx])
