@@ -23,11 +23,11 @@ class DependencyGraphConstructor(GraphConstructor):
             super(DependencyGraphConstructor._Variables, self).__init__()
             self.nlp_pipeline: str = ''
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='' , use_node_dependencies: bool=False):
+                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='' , use_node_dependencies: bool=False, use_compression=True):
 
         super(DependencyGraphConstructor, self)\
             .__init__(texts, self._Variables(), save_path, config, lazy_construction, load_preprocessed_data,
-                      naming_prepend)
+                      naming_prepend , use_compression)
         self.settings = {"tokens_dep_weight" : 1,"dep_tokens_weight" : 1, "token_token_weight" : 2}
         self.use_node_dependencies = use_node_dependencies
         if self.load_preprocessed_data:
@@ -154,5 +154,11 @@ class DependencyGraphConstructor(GraphConstructor):
         # nx.set_edge_attributes(g , edge_labels_dict)
         nx.draw_networkx_labels(g, pos=layout, labels=words_dict)
         # nx.draw_networkx_edge_labels(g, pos=layout)
+    def to_graph_indexed(self, text: str):
+        # TODO : implement this
+        pass
+    def convert_indexed_nodes_to_vector_nodes(self, graph):
+        # TODO : implement this
+        pass
         
 
