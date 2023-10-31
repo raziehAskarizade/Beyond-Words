@@ -1,43 +1,42 @@
 from abc import ABC, abstractmethod
+from builtins import *
+from typing import Tuple, Dict, Callable
+
 from Scripts.Utils.enums import Optimizer, LossType
 import torch
 from torch import nn
+from Scripts.Models.ModelsManager.Helpers.optimizer_factory import *
+from Scripts.Models.ModelsManager.Helpers.loss_function_factory import *
 
 
 class ModelManager(ABC):
 
-    def __init__(self, device=torch.device('cpu'), lr=0.01, l2_norm=0.001):
+    def __init__(self, optimizer_type: Optimizer, loss_type: LossType,
+                 device=torch.device('cpu'), lr=0.01, weight_decay=0.001):
         self.device = device
         self.lr = lr
-        self.l2_norm = l2_norm
+        self.weight_decay = weight_decay
+
+        self._optimizer_setters: Dict[Optimizer | int | str, Callable] = {
+            Optimizer.ADAM: create_adam_optimizer,
+            Optimizer.SGD: create_sgd_optimizer,
+            Optimizer.RMS_PROP: create_rms_prop_optimizer
+        }
+
+        self._loss_functions: Dict[LossType | int | str, Callable] = {
+            LossType.MSE: create_mse_loss,
+            LossType.BCE: create_bce_loss,
+            LossType.CROSS_ENTROPY: create_ce_loss
+        }
+
+        self.model, self.optimizer, self.loss_func = None, None, None
+        self._create_model(lr, optimizer_type, loss_type)
+
         self.history = dict()
 
-    # @abstractmethod
-    # def train(self, epoch_num: int = 100, lr: float = None, l2_norm: float = None, optimizer: Optimizer = None):
-    #     pass
-    #
-    # @abstractmethod
-    # def evaluate(self):
-    #     pass
-    #
-    # @abstractmethod
-    # def predict(self, node_x, edge_index):
-    #     pass
-
-    @staticmethod
-    def _create_optimizer(model, lr, l2_norm, optimizer=Optimizer.ADAM):
-        if optimizer == Optimizer.ADAM:
-            return torch.optim.Adam(model.parameters(), lr=lr, weight_decay=l2_norm)
-        elif optimizer == Optimizer.SGD:
-            return torch.optim.SGD(model.parameters(), lr=lr, weight_decay=l2_norm)
-        elif optimizer == Optimizer.RMS_PROP:
-            return torch.optim.RMSprop(model.parameters(), lr=lr, weight_decay=l2_norm)
-        elif optimizer == Optimizer.ADA_GRAD:
-            return torch.optim.Adagrad(model.parameters(), lr=lr, weight_decay=l2_norm)
-        elif optimizer == Optimizer.ADA_MAX:
-            return torch.optim.Adamax(model.parameters(), lr=lr, weight_decay=l2_norm)
-        else:
-            raise NotImplementedError("The optimizer type is not implemented!")
+    @abstractmethod
+    def _create_model(self, lr, optimizer_type, loss_type, **kwargs):
+        pass
 
     @staticmethod
     def _create_loss_func(loss_type):
@@ -49,3 +48,27 @@ class ModelManager(ABC):
             return nn.MSELoss()
         else:
             raise NotImplementedError("The optimizer type is not implemented!")
+
+    def set_optimizer(self, lr, optimizer=Optimizer.ADAM, **kwargs):
+        if optimizer in self._optimizer_setters:
+            self.optimizer = self._optimizer_setters[optimizer](lr, self.model, **kwargs)
+        else:
+            print('Target optimizer is not implemented or is not added to the dictionary!')
+
+    def set_loss_func(self, loss_type=LossType.MSE, **kwargs):
+        if loss_type in self._loss_functions:
+            self.loss_func = self._loss_functions[loss_type](**kwargs)
+        else:
+            print('Target optimizer is not implemented or is not added to the dictionary!')
+
+    @abstractmethod
+    def train(self, epoch_num: int = 100, lr: float = None, l2_norm: float = None, optimizer: Optimizer = None):
+        pass
+
+    @abstractmethod
+    def evaluate(self):
+        pass
+
+    @abstractmethod
+    def predict(self, node_x, edge_index):
+        pass

@@ -1,5 +1,8 @@
-from typing import List, Set, Tuple
+from typing import List, Set, Tuple, Any
 from abc import ABC, abstractmethod
+
+from pytorch_lightning.utilities.types import EVAL_DATALOADERS, TRAIN_DATALOADERS
+from torch_geometric.data.lightning.datamodule import LightningDataModule
 from torch_geometric.utils import augmentation
 import torch
 import numpy as np
@@ -8,27 +11,47 @@ from sklearn.model_selection import train_test_split
 from torch_geometric.utils import subgraph, train_test_split_edges
 from torch_geometric.data import Data
 
+from Scripts.Configs.ConfigClass import Config
 from Scripts.Utils.GraphCollection.GraphCollection import GraphCollection
 
 
-class GraphLoader(ABC):
+class GraphLoader(LightningDataModule, ABC):
 
-    def __init__(self, device, test_size=0.2, val_size=0.15, *args, **kwargs):
+    def __init__(self, config: Config, device, has_val: bool, has_test: bool, test_size=0.2, val_size=0.15, *args, **kwargs):
+        super(GraphLoader, self).__init__(has_val, has_test, **kwargs)
+        self.config = config
         self.test_size = test_size
         self.val_size = val_size
         self.device = device
 
     @abstractmethod
-    def get_train_data(self):
+    def prepare_data(self):
         pass
 
     @abstractmethod
-    def get_test_data(self):
+    def setup(self, stage: str):
         pass
 
     @abstractmethod
-    def get_val_data(self):
+    def train_dataloader(self) -> TRAIN_DATALOADERS:
         pass
+
+    @abstractmethod
+    def test_dataloader(self) -> EVAL_DATALOADERS:
+        pass
+
+    @abstractmethod
+    def val_dataloader(self) -> EVAL_DATALOADERS:
+        pass
+
+    @abstractmethod
+    def teardown(self, stage: str) -> None:
+        pass
+
+    # def predict_dataloader(self) -> EVAL_DATALOADERS:
+    # def transfer_batch_to_device(self, batch: Any, device: torch.device, dataloader_idx: int) -> Any:
+    # def on_before_batch_transfer(self, batch: Any, dataloader_idx: int) -> Any:
+    # def on_after_batch_transfer(self, batch: Any, dataloader_idx: int) -> Any:
 
 
 class HomogeneousGraphLoader(GraphLoader):
@@ -50,15 +73,15 @@ class HomogeneousGraphLoader(GraphLoader):
         self.edge_indices_val = self.create_sub_graph_edges(self.test_indices)
 
     @abstractmethod
-    def get_train_data(self):
+    def train_dataloader(self):
         pass
 
     @abstractmethod
-    def get_test_data(self):
+    def test_dataloader(self):
         pass
 
     @abstractmethod
-    def get_val_data(self):
+    def val_dataloader(self):
         pass
 
     @abstractmethod
@@ -119,13 +142,13 @@ class CollectionGraphLoader(GraphLoader):
         super(CollectionGraphLoader, self).__init__(device, test_size, val_size, *args, **kwargs)
         self.graphs = graphs
 
-    def get_train_data(self):
+    def train_dataloader(self):
         pass
 
-    def get_test_data(self):
+    def test_dataloader(self):
         pass
 
-    def get_val_data(self):
+    def val_dataloader(self):
         pass
 
 

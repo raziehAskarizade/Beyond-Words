@@ -20,14 +20,14 @@ class NLabeledGraphLoader(GraphLoader):
         self.train_indices, self.test_indices = train_test_split(
             torch.concat([self.train_indices, self.test_indices]), test_size=self._test_size)
 
-    def get_train_data(self):
+    def train_dataloader(self):
 
         return self.nodes[self.train_indices], self.node_labels[self.train_indices], self.edge_indices_train
 
-    def get_test_data(self):
+    def test_dataloader(self):
         return self.nodes[self.test_indices], self.node_labels[self.test_indices], self.edge_indices_test
 
-    def get_val_data(self):
+    def val_dataloader(self):
         return self.nodes[self.val_indices], self.node_labels[self.val_indices], self.edge_indices_val
 
     def update(self, nodes_x, edge_index, device, *args, **kwargs):
