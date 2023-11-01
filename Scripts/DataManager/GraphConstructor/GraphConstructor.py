@@ -151,7 +151,7 @@ class GraphConstructor(ABC):
             # np.save(file=f, arr=edge_attr)
             # f.close()
         self.var.save_to_file(path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
-    def load_all_data_comppressed(self):
+    def load_all_data_compressed(self):
         self.var = self.var.load_from_file(path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
         for i in range(self.var.graph_num):
             self._graphs[i] = self.convert_indexed_nodes_to_vector_nodes(torch.load(path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt')))

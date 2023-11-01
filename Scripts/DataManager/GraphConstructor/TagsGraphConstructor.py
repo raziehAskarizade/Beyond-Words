@@ -21,11 +21,11 @@ class TagsGraphConstructor(GraphConstructor):
             super(TagsGraphConstructor._Variables, self).__init__()
             self.nlp_pipeline: str = ''
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                 lazy_construction=True, load_preprocessed_data=False, naming_prepend=''):
+                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='' , use_compression=True):
 
         super(TagsGraphConstructor, self)\
             .__init__(texts, self._Variables(), save_path, config, lazy_construction, load_preprocessed_data,
-                      naming_prepend)
+                      naming_prepend , use_compression)
         self.settings = {"tokens_tag_weight" : 1, "token_token_weight" : 2}
         if self.load_preprocessed_data:
             if not self.lazy_construction:
@@ -44,7 +44,7 @@ class TagsGraphConstructor(GraphConstructor):
                             print(f'i: {i}')
                         self._graphs[i] = self.to_graph(self.raw_data[i])
                         self.var.graphs_name[i] = f'{self.naming_prepend}_{i}'
-            self.save_all_data()
+                        # self.save_all_data()
 
     def to_graph(self, text: str):
         doc = self.nlp(text)
@@ -56,12 +56,17 @@ class TagsGraphConstructor(GraphConstructor):
             if self.tags[tag_idx] == tag:
                 return tag_idx
         return -1 # means not found
-    def __create_graph(self , doc):
-        
+    def __build_initial_tag_vectors(self , tags_length : int):
+        return torch.zeros((tags_length, self.nlp.vocab.vectors_length), dtype=torch.float32)  
+    def __create_graph(self , doc , for_compression=False):
         data = HeteroData()
         tags_length = len(self.tags)
-        data['tag'].x = torch.zeros((tags_length, self.nlp.vocab.vectors_length), dtype=torch.float32)
-        data['word'].x = torch.zeros((len(doc) , self.nlp.vocab.vectors_length), dtype=torch.float32)
+        if for_compression:
+            data['dep'].x = torch.full((tags_length,),-1, dtype=torch.float32)
+            data['word'].x = torch.full((len(doc),),-1, dtype=torch.float32)
+        else:
+            data['tag'].x = self.__build_initial_tag_vectors(tags_length)
+            data['word'].x = torch.zeros((len(doc) , self.nlp.vocab.vectors_length), dtype=torch.float32)
         word_tag_edge_index = []
         tag_word_edge_index = []
         word_word_edge_index = []
@@ -75,7 +80,10 @@ class TagsGraphConstructor(GraphConstructor):
         for token in doc:
             token_id = self.nlp.vocab.strings[token.lemma_]
             if token_id in self.nlp.vocab.vectors:
-                data['word'].x[token.i] = torch.tensor(self.nlp.vocab.vectors[token_id])
+                if for_compression:
+                    data['word'].x[token.i] = torch.tensor(token_id , dtype=torch.float32)
+                else:
+                    data['word'].x[token.i] = torch.tensor(self.nlp.vocab.vectors[token_id])
             tag_idx = self.__find_tag_index(token.tag_)
             if tag_idx != -1:
                 word_tag_edge_index.append([token.i , tag_idx])
@@ -113,10 +121,20 @@ class TagsGraphConstructor(GraphConstructor):
         nx.draw_networkx_labels(g, pos=layout, labels=words_dict)
         # nx.draw_networkx_edge_labels(g, pos=layout)
     def to_graph_indexed(self, text: str):
-        # TODO : implement this
+        doc = self.nlp(text)
+        if len(doc) < 2:
+            return
+        return self.__create_graph(doc , for_compression=True)
         pass
     def convert_indexed_nodes_to_vector_nodes(self, graph):
-        # TODO : implement this
-        pass
+        words = torch.zeros((len(graph['word'].x) , self.nlp.vocab.vectors_length), dtype=torch.float32)
+        for i in range(len(graph['word'].x)):
+            if graph['word'].x[i] in self.nlp.vocab.vectors:
+                words[i] = torch.tensor(self.nlp.vocab.vectors[graph['word'].x[i]])
+            else:
+                words[i] = torch.zeros((self.nlp.vocab.vectors_length) , dtype=torch.float32)
+        graph['word'].x = words
+        graph['tag'].x = self.__build_initial_tag_vectors(len(self.tags))
+        return graph
         
 

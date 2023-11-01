@@ -21,11 +21,11 @@ class SequentialGraphConstructor(GraphConstructor):
             super(SequentialGraphConstructor._Variables, self).__init__()
             self.nlp_pipeline: str = ''
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='', use_general_node=False):
+                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='', use_general_node=False , use_compression=True):
 
         super(SequentialGraphConstructor, self)\
             .__init__(texts, self._Variables(), save_path, config, lazy_construction, load_preprocessed_data,
-                      naming_prepend)
+                      naming_prepend , use_compression)
         self.settings = {"tokens_general_weight" : 1, "token_token_weight" : 2 , "general_tokens_weight" : 2}
         self.use_general_node = use_general_node
         if self.load_preprocessed_data:
@@ -44,7 +44,7 @@ class SequentialGraphConstructor(GraphConstructor):
                             print(f'i: {i}')
                         self._graphs[i] = self.to_graph(self.raw_data[i])
                         self.var.graphs_name[i] = f'{self.naming_prepend}_{i}'
-            self.save_all_data()
+                        # self.save_all_data()
 
     def to_graph(self, text: str):
         doc = self.nlp(text)
@@ -54,58 +54,57 @@ class SequentialGraphConstructor(GraphConstructor):
             return self.__create_graph_with_general_node(doc)
         else:
             return self.__create_graph(doc)
-    def __create_graph(self , doc):
+    def __create_graph(self , doc , for_compression=False):
         docs_length = len(doc)
-        if self.use_general_node:
-            docs_length += 1
-        node_attr = torch.zeros((docs_length, self.nlp.vocab.vectors_length), dtype=torch.float32)
+        node_attr = torch.zeros((len(doc), self.nlp.vocab.vectors_length), dtype=torch.float32)
+        if for_compression:
+            node_attr = torch.full((len(doc),),-1, dtype=torch.float32)
         edge_index = []
         edge_attr = []
-        
-        # for idx in range(tags_length):
-            # if vevtorizing of dependencies is needed, do it here
-            # node_attr[idx] = sth ...
         for token in doc:
             token_id = self.nlp.vocab.strings[token.lemma_]
             if token_id in self.nlp.vocab.vectors:
-                node_attr[token.i] = torch.tensor(self.nlp.vocab.vectors[token_id])
-            # adding sequential edges between tokens - uncomment the codes for vectorized edges
+                if for_compression:
+                    node_attr[token.i] = torch.tensor(token_id , dtype=torch.float32)
+                else:
+                    node_attr[token.i] = torch.tensor(self.nlp.vocab.vectors[token_id])
             if token.i != len(doc) - 1:
                 # using zero vectors for edge features
                 edge_index.append([token.i , token.i + 1])
                 edge_index.append([token.i + 1 , token.i])
-                # self.edge_attr.append(torch.zeros((self.nlp.vocab.vectors_length,), dtype=torch.float32))
                 edge_attr.append(self.settings["token_token_weight"]) 
                 edge_attr.append(self.settings["token_token_weight"]) 
-        # self.node_attr = node_attr
         edge_index = torch.transpose(torch.tensor(edge_index, dtype=torch.long) , 0 , 1)
-        # self.edge_attr = edge_attr # vectorized edge attributes
         return Data(x=node_attr, edge_index=edge_index,edge_attr=edge_attr)
-    def __create_graph_with_general_node(self , doc):
+    def __build_initial_general_vector(self):
+        return torch.zeros((1 , self.nlp.vocab.vectors_length), dtype=torch.float32)
+    def __create_graph_with_general_node(self , doc , for_compression=False):
         data = HeteroData()
-        data['general'].x = torch.zeros((1, self.nlp.vocab.vectors_length), dtype=torch.float32)
-        data['word'].x = torch.zeros((len(doc) , self.nlp.vocab.vectors_length), dtype=torch.float32)
+        if for_compression:
+            data['general'].x = torch.full((1,),-1, dtype=torch.float32)
+            data['word'].x = torch.full((len(doc),),-1, dtype=torch.float32)
+        else:
+            data['general'].x = self.__build_initial_general_vector()
+            data['word'].x = torch.zeros((len(doc) , self.nlp.vocab.vectors_length), dtype=torch.float32)
         word_general_edge_index = []
         general_word_edge_index = []
         word_word_edge_index = []
         word_general_edge_attr = []
         general_word_edge_attr = []
         word_word_edge_attr = []
-        
-        # for idx in range(tags_length):
-            # if vevtorizing of dependencies is needed, do it here
-            # node_attr[idx] = sth ...
         for token in doc:
             token_id = self.nlp.vocab.strings[token.lemma_]
             if token_id in self.nlp.vocab.vectors:
-                data['word'].x[token.i] = torch.tensor(self.nlp.vocab.vectors[token_id])
+                if for_compression:
+                    data['word'].x[token.i] = torch.tensor(token_id , dtype=torch.float32)
+                else:
+                    data['word'].x[token.i] = torch.tensor(self.nlp.vocab.vectors[token_id])
             word_general_edge_index.append([token.i , 0])
             word_general_edge_attr.append(self.settings["tokens_general_weight"])
             general_word_edge_index.append([0 , token.i])
             general_word_edge_attr.append(self.settings["general_tokens_weight"])
             # adding sequential edges between tokens - uncomment the codes for vectorized edges
             if token.i != len(doc) - 1:
-                # using zero vectors for edge features
                 word_word_edge_index.append([token.i , token.i + 1])
                 word_word_edge_attr.append(self.settings["token_token_weight"])
                 word_word_edge_index.append([token.i + 1 , token.i])
@@ -129,15 +128,33 @@ class SequentialGraphConstructor(GraphConstructor):
         layout = nx.spring_layout(g)
         nx.draw(g, pos=layout)
         words_dict = {i: node_tokens[i] for i in range(len(node_tokens))}
-        # edge_labels_dict = {(graph_data.edge_index[0][i].item() , graph_data.edge_index[1][i].item()) : { "dep" : graph_data.edge_attr[i]} for i in range(len(graph_data.edge_attr))}
-        # nx.set_edge_attributes(g , edge_labels_dict)
         nx.draw_networkx_labels(g, pos=layout, labels=words_dict)
-        # nx.draw_networkx_edge_labels(g, pos=layout)
     def to_graph_indexed(self, text: str):
-        # TODO : implement this
-        pass
+        doc = self.nlp(text)
+        if len(doc) < 2:
+            return
+        if self.use_general_node:
+            return self.__create_graph_with_general_node(doc, for_compression=True)
+        else:
+            return self.__create_graph(doc, for_compression=True)
     def convert_indexed_nodes_to_vector_nodes(self, graph):
-        # TODO : implement this
-        pass
+        if self.use_general_node:
+            words = torch.zeros((len(graph['word'].x) , self.nlp.vocab.vectors_length), dtype=torch.float32)
+            for i in range(len(graph['word'].x)):
+                if graph['word'].x[i] in self.nlp.vocab.vectors:
+                    words[i] = torch.tensor(self.nlp.vocab.vectors[graph['word'].x[i]])
+                else:
+                    words[i] = torch.zeros((self.nlp.vocab.vectors_length) , dtype=torch.float32)
+            graph['word'].x = words
+            graph['general'].x = self.__build_initial_general_vector()
+        else:
+            words = torch.zeros((len(graph.x) , self.nlp.vocab.vectors_length), dtype=torch.float32)
+            for i in range(len(graph.x)):
+                if graph.x[i] in self.nlp.vocab.vectors:
+                    words[i] = torch.tensor(self.nlp.vocab.vectors[graph['word'].x[i]])
+                else:
+                    words[i] = torch.zeros((self.nlp.vocab.vectors_length) , dtype=torch.float32)
+            graph.x = words
+        return graph
         
 
