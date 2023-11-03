@@ -2,8 +2,8 @@ import torch
 from torch.nn import Linear
 from torch_geometric.nn import GATv2Conv, GCNConv, GCN2Conv, DenseGCNConv, dense_diff_pool
 from torch_geometric.nn import Sequential as GSequential
+from torch_geometric.utils import to_dense_adj
 from torch import nn
-
 
 class GcnGatModel1(nn.Module):
     r"""
@@ -39,13 +39,13 @@ class GcnGatModel1(nn.Module):
         self.output_layer = Linear(256, self.num_out_features)
 
     def forward(self, x):
-        ci = torch.tensor([x[i].x.shape[0] for i in range(len(x))], dtype=torch.int).cumsum(0, dtype=torch.int)
         x1 = self.encoder(x.x, x.edge_index, x.edge_attr)
+        ci = torch.tensor([x[i].x.shape[0] for i in range(len(x))], dtype=torch.int, device=x1.device).cumsum(0, dtype=torch.int)
         x2 = [x1[0 if i == 0 else ci[i - 1]:ci[i]] for i in range(len(ci))]
         x3 = torch.zeros((len(x2), 256), dtype=x1.dtype, device=x1.device)
         for i in range(len(ci)):
             s = self.pooling_layer1(x2[i], x[i].edge_index, x[i].edge_attr)
-            adj = torch.sparse_coo_tensor(x[i].edge_index, x[i].edge_attr).to_dense()
+            adj = to_dense_adj(edge_index=x[i].edge_index, max_num_nodes=x[i].x.shape[0], edge_attr=x[i].edge_attr)
             nodes, adj, _, _ = dense_diff_pool(x2[i], adj, s=s)
             s = self.pooling_layer2(nodes, adj)
             nodes, _, _, _ = dense_diff_pool(nodes, adj, s=s)

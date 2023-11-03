@@ -8,12 +8,14 @@ from abc import abstractmethod
 
 class BaseLightningModel(L.LightningModule):
 
-    def __init__(self, model, optimizer=None, loss_func=None, lr=0.01):
+    def __init__(self, model, optimizer=None, loss_func=None, lr=0.01, batch_size=64):
         super(BaseLightningModel, self).__init__()
+        self.batch_size = batch_size
         self.lr = lr
         self.model = model
         self.optimizer = self._get_optimizer(optimizer)
         self.loss_func = self._get_loss_func(loss_func)
+        self.save_hyperparameters(ignore=['model'])
 
     def forward(self, data_batch, *args, **kwargs):
         return self.model(data_batch)
@@ -44,6 +46,17 @@ class BaseLightningModel(L.LightningModule):
             if optimizer is not None else \
             torch.optim.Adam(self.model.parameters(), lr=self.lr)
 
+        # return [optimier], [lr_scheduler]
+        # return {
+        #     "optimizer": optimizer,
+        #     "lr_scheduler": {
+        #         "scheduler": scheduler,
+        #         "monitor": "train_loss",
+        #         "interval": "step", #"epoch"
+        #         "frequency": 1
+        #     }
+        # }
+
     @abstractmethod
     def _get_loss_func(self, loss_func):
         pass
@@ -51,8 +64,8 @@ class BaseLightningModel(L.LightningModule):
 
 class BinaryLightningModel(BaseLightningModel):
 
-    def __init__(self, model, optimizer=None, loss_func=None, lr=0.01):
-        super(BinaryLightningModel, self).__init__(model, optimizer, loss_func, lr)
+    def __init__(self, model, optimizer=None, loss_func=None, lr=0.01, batch_size=64):
+        super(BinaryLightningModel, self).__init__(model, optimizer, loss_func, lr, batch_size=batch_size)
         self.train_acc = torchmetrics.Accuracy(task="binary")
         self.val_acc = torchmetrics.Accuracy(task="binary")
         self.test_acc = torchmetrics.Accuracy(task="binary")
@@ -61,14 +74,14 @@ class BinaryLightningModel(BaseLightningModel):
         loss, out_features = super(BinaryLightningModel, self).training_step(data_batch, *args, **kwargs)
         predicted_labels = out_features if out_features.shape[1] < 2 else torch.argmax(out_features, dim=1)
         self.train_acc(predicted_labels, data_batch[1].view(predicted_labels.shape))
-        self.log('training_acc', self.train_acc, prog_bar=True, on_epoch=True, on_step=False)
+        self.log('training_acc', self.train_acc, prog_bar=True, on_epoch=True, on_step=False, batch_size=self.batch_size)
         return loss
 
     def validation_step(self, data_batch, *args, **kwargs):
         out_features = super(BinaryLightningModel, self).validation_step(data_batch, *args, **kwargs)
         predicted_labels = out_features if out_features.shape[1] < 2 else torch.argmax(out_features, dim=1)
         self.val_acc(predicted_labels, data_batch[1].view(predicted_labels.shape))
-        self.log('val_acc', self.val_acc, prog_bar=True, on_epoch=True, on_step=False)
+        self.log('val_acc', self.val_acc, prog_bar=True, on_epoch=True, on_step=False, batch_size=self.batch_size)
 
     def _get_loss_func(self, loss_func):
         return loss_func \
@@ -78,8 +91,8 @@ class BinaryLightningModel(BaseLightningModel):
 
 class MultiClassLightningModel(BaseLightningModel):
 
-    def __init__(self, model, optimizer=None, loss_func=None, lr=0.01):
-        super(MultiClassLightningModel, self).__init__(model, optimizer, loss_func, lr)
+    def __init__(self, model, optimizer=None, loss_func=None, lr=0.01, batch_size=64):
+        super(MultiClassLightningModel, self).__init__(model, optimizer, loss_func, lr, batch_size=batch_size)
         self.train_acc = torchmetrics.Accuracy(task="multiclass")
         self.val_acc = torchmetrics.Accuracy(task="multiclass")
         self.test_acc = torchmetrics.Accuracy(task="multiclass")
@@ -105,8 +118,8 @@ class MultiClassLightningModel(BaseLightningModel):
 
 class MultiLabelLightningModel(BaseLightningModel):
 
-    def __init__(self, model, optimizer=None, loss_func=None, lr=0.01):
-        super(MultiLabelLightningModel, self).__init__(model, optimizer, loss_func, lr)
+    def __init__(self, model, optimizer=None, loss_func=None, lr=0.01, batch_size=64):
+        super(MultiLabelLightningModel, self).__init__(model, optimizer, loss_func, lr, batch_size=batch_size)
         self.train_acc = torchmetrics.Accuracy(task="multilabel")
         self.val_acc = torchmetrics.Accuracy(task="multilabel")
         self.test_acc = torchmetrics.Accuracy(task="multilabel")
