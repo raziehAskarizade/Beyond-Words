@@ -15,7 +15,7 @@ from Scripts.Configs.ConfigClass import Config
 from Scripts.Utils.GraphCollection.GraphCollection import GraphCollection
 
 
-class GraphLoader(LightningDataModule, ABC):
+class GraphLoader(LightningDataModule):
 
     def __init__(self, config: Config, device, has_val: bool, has_test: bool, test_size=0.2, val_size=0.15, *args, **kwargs):
         super(GraphLoader, self).__init__(has_val, has_test, **kwargs)
