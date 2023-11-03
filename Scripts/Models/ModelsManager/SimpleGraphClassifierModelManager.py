@@ -15,7 +15,7 @@ class SimpleGraphClassifierModelManager(ModelManager):
                  loss_type: LossType = LossType.CROSS_ENTROPY, device=torch.device('cpu'), lr=0.01, weight_decay=0.001):
         super(SimpleGraphClassifierModelManager, self).__init__(optimizer_type, loss_type, device, lr, weight_decay)
         self.graph_handler: AmazonReviewGraphLoader = graph_handler
-        self.lightning_model = BinaryLightningModel(self.model, self.optimizer, self.loss_func, lr=lr)
+        self.lightning_model = BinaryLightningModel(self.model, self.optimizer, self.loss_func, learning_rate=lr)
         
     def _create_model(self, lr, optimizer_type, loss_type, **kwargs):
         self.model = GcnGatModel1(300, 1)
