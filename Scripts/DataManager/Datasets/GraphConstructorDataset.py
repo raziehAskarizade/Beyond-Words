@@ -1,3 +1,4 @@
+import torch
 from torch.utils.data import Dataset
 
 from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor
@@ -15,4 +16,4 @@ class GraphConstructorDataset(Dataset):
         return x, y
 
     def __len__(self):
-        return self.graph_constructor.var.graph_num
+        return len(self.graph_labels)

@@ -22,33 +22,45 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
             self.nlp_pipeline: str = ''
 
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='' , use_compression=True):
-
+                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='', use_compression=True, num_data_load=-1, device='cpu'):
+        print(device)
         super(CoOccurrenceGraphConstructor, self)\
-            .__init__(texts, self._Variables(), save_path, config, lazy_construction, load_preprocessed_data,
-                      naming_prepend , use_compression)
+            .__init__(texts, self._Variables(), save_path, config, lazy_construction, load_preprocessed_data, naming_prepend, use_compression, num_data_load, device)
+        print(self.var.device)
         self.var.nlp_pipeline = self.config.spacy.pipeline
         self.var.graph_num = len(self.raw_data)
         self.nlp = spacy.load(self.var.nlp_pipeline)
-        if self.load_preprocessed_data:
-
+        
+    def setup(self, load_preprocessed_data = True):
+        self.load_preprocessed_data = True
+        if load_preprocessed_data:
+            self.load_var()
+            self.num_data_load = self.var.graph_num if self.num_data_load > self.var.graph_num else self.num_data_load
             if not self.lazy_construction:
-                if self.use_compression:
-                    self.load_all_data_comppressed()
-                else:
-                    self.load_all_data()
-            else:
-                self.load_var()
+                for i in range(self.num_data_load):
+                    if i%100 == 0:
+                        print(f' {i} graph loaded')
+                    if (self._graphs[i] is None) and (i in self.var.graphs_name):
+                        self.load_data_compressed(i)
+                    else:
+                        self._graphs[i] = self.to_graph(self.raw_data[i])
+                        self.var.graphs_name[i] = f'{self.naming_prepend}_{i}'
+                        self.save_data_compressed(i)
+                self.var.save_to_file(os.path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
         else:
-
             if not self.lazy_construction:
-                for i in range(len(self.raw_data)):
+                save_start = 0
+                self.num_data_load = len(self.raw_data) if self.num_data_load > len(self.raw_data) else self.num_data_load
+                for i in range(self.num_data_load):
                     if i not in self._graphs:
                         if i % 100 == 0:
+                            self.save_data_range(save_start, i)
+                            save_start = i
                             print(f'i: {i}')
                         self._graphs[i] = self.to_graph(self.raw_data[i])
                         self.var.graphs_name[i] = f'{self.naming_prepend}_{i}'
-            self.save_all_data()
+                self.save_data_range(save_start, self.num_data_load)
+            self.var.save_to_file(os.path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
 
     def to_graph(self, text: str):
         doc = self.nlp(text)
@@ -72,38 +84,40 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
         unique_map = pd.Series(range(len(unique_words)), index=unique_words)
         return unique_words, unique_map
 
-    @staticmethod
-    def __get_co_occurrence_matrix(doc, unique_words, unique_map):
+    def __get_co_occurrence_matrix(self, doc, unique_words, unique_map):
         tokens = [t.lower_ for t in doc]
         n_gram = 4
         g_length = doc.__len__() - n_gram
-        dense_mat = torch.zeros((len(unique_words), len(unique_words)), dtype=torch.float32)
+        print(f'dense_mat device: {self.var.device}')
+        dense_mat = torch.zeros((len(unique_words), len(unique_words)), dtype=torch.float32, device=self.var.device)
+        print(f'dense_mat device: {dense_mat.device}')
         for i in range(g_length):
             n_gram_data = list(set(tokens[i:i + n_gram]))
             if len(n_gram_data) < 2:
                 continue
             n_gram_ids = unique_map[n_gram_data]
             grid_ids = [(x, y) for x in n_gram_ids for y in n_gram_ids if x != y]
-            grid_ids = torch.tensor(grid_ids, dtype=torch.int)
+            grid_ids = torch.tensor(grid_ids, dtype=torch.int, device=self.var.device)
             dense_mat[grid_ids[:, 0], grid_ids[:, 1]] += 1
         dense_mat = torch.nn.functional.normalize(dense_mat)
         sparse_mat = dense_mat.to_sparse_coo()
+        print(f'sparse_mat device: {sparse_mat.device}')
         return sparse_mat
 
     def __get_unique_words_vector(self, unique_words):
         unique_word_ids = [self.nlp.vocab.strings[unique_words[i]] for i in range(len(unique_words))]
-        unique_word_vectors = torch.zeros((len(unique_words), self.nlp.vocab.vectors_length), dtype=torch.float32)
+        unique_word_vectors = torch.zeros((len(unique_words), self.nlp.vocab.vectors_length), dtype=torch.float32, device=self.var.device)
         for i in range(len(unique_words)):
             word_id = unique_word_ids[i]
             if word_id in self.nlp.vocab.vectors:
-                unique_word_vectors[i] = torch.tensor(self.nlp.vocab.vectors[word_id])
+                unique_word_vectors[i] = torch.tensor(self.nlp.vocab.vectors[word_id], device=self.var.device)
             else:
                 # Write functionality to resolve word vector ((for now we use random vector)) 1000
                 # use pretrain model to generate vector (heavy)
                 # Over-fit a smaller model over spacy dictionary
-                unique_word_vectors[i] = torch.zeros((self.nlp.vocab.vectors_length,), dtype=torch.float32)
+                unique_word_vectors[i] = torch.zeros((self.nlp.vocab.vectors_length,), dtype=torch.float32, device=self.var.device)
         return unique_word_vectors
-    
+
     def __get_unique_words_ids(self, unique_words):
         unique_word_ids = [self.nlp.vocab.strings[unique_words[i]] for i in range(len(unique_words))]
         unique_word_indices = [None for i in range(len(unique_words))]
@@ -115,16 +129,15 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
                 # Write functionality to resolve word vector ((for now we use random vector)) 1000
                 # use pretrain model to generate vector (heavy)
                 # Over-fit a smaller model over spacy dictionary
-                unique_word_indices[i] = torch.zeros((self.nlp.vocab.vectors_length,), dtype=torch.float32)
+                unique_word_indices[i] = torch.zeros((self.nlp.vocab.vectors_length,), dtype=torch.float32, device=self.var.device)
         return unique_word_indices
 
-    @staticmethod
-    def __create_graph(unique_word_vectors, co_occurrence_matrix):  # edge_label
+    def __create_graph(self, unique_word_vectors, co_occurrence_matrix):  # edge_label
         node_attr = unique_word_vectors
-        edge_index = co_occurrence_matrix.indices()
-        edge_attr = co_occurrence_matrix.values()
+        edge_index = co_occurrence_matrix.indices().to(self.var.device)
+        edge_attr = co_occurrence_matrix.values().to(self.var.device)
         return Data(x=node_attr, edge_index=edge_index, edge_attr=edge_attr)
-    
+
     def to_graph_indexed(self, text: str):
         doc = self.nlp(text)
         unique_words, unique_map = self.__get_unique_words(doc)
@@ -133,12 +146,14 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
         unique_word_ids = self.__get_unique_words_ids(unique_words)
         co_occurrence_matrix = self.__get_co_occurrence_matrix(doc, unique_words, unique_map)
         return self.__create_graph(unique_word_ids, co_occurrence_matrix)
+    
     def convert_indexed_nodes_to_vector_nodes(self, graph):
-        nodes = torch.zeros((len(graph.x), self.nlp.vocab.vectors_length), dtype=torch.float32)
+        nodes = torch.zeros((len(graph.x), self.nlp.vocab.vectors_length), dtype=torch.float32, device=self.var.device)
         for i in range(len(graph.x)):
             if graph.x[i] in self.nlp.vocab.vectors:
-                nodes[i] = torch.tensor(self.nlp.vocab.vectors[graph.x[i]])
-        return Data(x=nodes , edge_index=graph.edge_index , edge_attr=graph.edge_attr)
+                nodes[i] = torch.tensor(self.nlp.vocab.vectors[graph.x[i]], device=self.var.device)
+        return Data(x=nodes , edge_index=graph.edge_index.to(self.var.device) , edge_attr=graph.edge_attr.to(self.var.device))
+    
     def draw_graph(self, idx: int):
         g = to_networkx(self.get_graph(idx), to_undirected=True)
         layout = nx.spring_layout(g)

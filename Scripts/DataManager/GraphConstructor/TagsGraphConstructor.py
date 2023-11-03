@@ -20,6 +20,7 @@ class TagsGraphConstructor(GraphConstructor):
         def __init__(self):
             super(TagsGraphConstructor._Variables, self).__init__()
             self.nlp_pipeline: str = ''
+
     def __init__(self, texts: List[str], save_path: str, config: Config,
                  lazy_construction=True, load_preprocessed_data=False, naming_prepend='' , use_compression=True):
 
@@ -51,11 +52,13 @@ class TagsGraphConstructor(GraphConstructor):
         if len(doc) < 2:
             return
         return self.__create_graph(doc)
+
     def __find_tag_index(self , tag : str):
         for tag_idx in range(len(self.tags)):
             if self.tags[tag_idx] == tag:
                 return tag_idx
         return -1 # means not found
+    
     def __build_initial_tag_vectors(self , tags_length : int):
         return torch.zeros((tags_length, self.nlp.vocab.vectors_length), dtype=torch.float32)  
     def __create_graph(self , doc , for_compression=False):
@@ -95,14 +98,14 @@ class TagsGraphConstructor(GraphConstructor):
                 # using zero vectors for edge features
                 word_word_edge_index.append([token.i , token.i + 1])
                 word_word_edge_attr.append(self.settings["token_token_weight"])
-                word_word_edge_index.append([token.i + 1 , token.i])
+                word_word_edge_index.append([token.i + 1, token.i])
                 word_word_edge_attr.append(self.settings["token_token_weight"])
-        data['tag' , 'tag_word' , 'word'].edge_index = torch.transpose(torch.tensor(tag_word_edge_index, dtype=torch.long) , 0 , 1)
-        data['word' , 'word_tag' , 'tag'].edge_index = torch.transpose(torch.tensor(word_tag_edge_index, dtype=torch.long) , 0 , 1)
-        data['word' , 'seq' , 'word'].edge_index = torch.transpose(torch.tensor(word_word_edge_index, dtype=torch.long) , 0 , 1)
-        data['tag' , 'tag_word' , 'word'].edge_attr = tag_word_edge_attr
-        data['word' , 'word_tag' , 'tag'].edge_attr = word_tag_edge_attr
-        data['word' , 'seq' , 'word'].edge_attr = word_word_edge_attr
+        data['tag', 'tag_word', 'word'].edge_index = torch.transpose(torch.tensor(tag_word_edge_index, dtype=torch.long) , 0 , 1)
+        data['word', 'word_tag', 'tag'].edge_index = torch.transpose(torch.tensor(word_tag_edge_index, dtype=torch.long) , 0 , 1)
+        data['word', 'seq', 'word'].edge_index = torch.transpose(torch.tensor(word_word_edge_index, dtype=torch.long) , 0 , 1)
+        data['tag', 'tag_word', 'word'].edge_attr = tag_word_edge_attr
+        data['word', 'word_tag', 'tag'].edge_attr = word_tag_edge_attr
+        data['word', 'seq', 'word'].edge_attr = word_word_edge_attr
         return data
     def draw_graph(self , idx : int):
         node_tokens = []
