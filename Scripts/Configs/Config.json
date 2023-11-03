@@ -2,10 +2,11 @@
   "spacy": {
     "pipeline": "en_core_web_lg"
   },
-<<<<<<< Updated upstream
-  "device": "cuda",
-  "data_root_dir": "C:\\Users\\fardin\\Projects\\ColorIntelligence\\data"
-=======
+  "datasets": {
+    "amazon_review": {
+      "train": "data/Amazon-Review/train_sm.csv",
+      "test": "data/Amazon-Review/test_sm.csv"
+    }
+  },
   "device": "cuda"
->>>>>>> Stashed changes
 }
