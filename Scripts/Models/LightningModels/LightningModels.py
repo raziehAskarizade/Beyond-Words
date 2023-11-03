@@ -8,50 +8,69 @@ from abc import abstractmethod
 
 class BaseLightningModel(L.LightningModule):
 
-    def __init__(self, model, optimizer=None, loss_func=None, lr=0.01, batch_size=64):
+    def __init__(self, model, optimizer=None, loss_func=None, learning_rate=0.01, batch_size=64, lr_scheduler=None):
         super(BaseLightningModel, self).__init__()
         self.batch_size = batch_size
-        self.lr = lr
+        self.learning_rate = learning_rate
         self.model = model
         self.optimizer = self._get_optimizer(optimizer)
+        self.lr_scheduler= self._get_lr_scheduler(lr_scheduler)
         self.loss_func = self._get_loss_func(loss_func)
         self.save_hyperparameters(ignore=['model'])
+        print(f'device: {self.device}')
 
     def forward(self, data_batch, *args, **kwargs):
         return self.model(data_batch)
 
     def training_step(self, data_batch, *args, **kwargs):
         data, labels = data_batch
+        data = data.to(self.device)
+        labels = labels.to(self.device)
         out_features = self(data)
         loss = self.loss_func(out_features, labels.view(out_features.shape))
-        self.log('training_loss', loss)
+        self.log('training_loss', loss, batch_size=self.batch_size, on_epoch=True, on_step=False)
         return loss, out_features
 
     def validation_step(self, data_batch, *args, **kwargs):
         data, labels = data_batch
+        data = data.to(self.device)
+        labels = labels.to(self.device)
         out_features = self(data)
         loss = self.loss_func(out_features, labels.view(out_features.shape))
-        self.log('val_loss', loss)
+        self.log('val_loss', loss, batch_size=self.batch_size, on_epoch=True, on_step=False)
         return out_features
 
     def predict_step(self, data_batch, *args: Any, **kwargs: Any) -> Any:
         data, labels = data_batch
+        data = data.to(self.device)
+        labels = labels.to(self.device)
         return self(data)
 
     def configure_optimizers(self) -> OptimizerLRScheduler:
-        return self.optimizer
+        
+        return {
+            "optimizer": self.optimizer,
+            "lr_scheduler": {
+                "scheduler": self.lr_scheduler,
+                "monitor": "training_loss",
+                "interval": "epoch",
+                "frequency": 1
+            }
+        }
 
     def _get_optimizer(self, optimizer):
-        return optimizer \
-            if optimizer is not None else \
-            torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        return optimizer if optimizer is not None else torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
+    
+    def _get_lr_scheduler(self, lr_scheduler):
+        return lr_scheduler if lr_scheduler is not None else torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=5, factor=0.1, mode='min')
+            
 
         # return [optimier], [lr_scheduler]
         # return {
         #     "optimizer": optimizer,
         #     "lr_scheduler": {
         #         "scheduler": scheduler,
-        #         "monitor": "train_loss",
+        #         "monitor": "training_loss",
         #         "interval": "step", #"epoch"
         #         "frequency": 1
         #     }
@@ -64,13 +83,13 @@ class BaseLightningModel(L.LightningModule):
 
 class BinaryLightningModel(BaseLightningModel):
 
-    def __init__(self, model, optimizer=None, loss_func=None, lr=0.01, batch_size=64):
-        super(BinaryLightningModel, self).__init__(model, optimizer, loss_func, lr, batch_size=batch_size)
+    def __init__(self, model, optimizer=None, loss_func=None, learning_rate=0.01, batch_size=64, lr_scheduler=None):
+        super(BinaryLightningModel, self).__init__(model, optimizer, loss_func, learning_rate, batch_size=batch_size, lr_scheduler=lr_scheduler)
         self.train_acc = torchmetrics.Accuracy(task="binary")
         self.val_acc = torchmetrics.Accuracy(task="binary")
         self.test_acc = torchmetrics.Accuracy(task="binary")
 
-    def training_step(self, data_batch, *args, **kwargs):
+    def training_step(self, data_batch, *args, **kwargs):        
         loss, out_features = super(BinaryLightningModel, self).training_step(data_batch, *args, **kwargs)
         predicted_labels = out_features if out_features.shape[1] < 2 else torch.argmax(out_features, dim=1)
         self.train_acc(predicted_labels, data_batch[1].view(predicted_labels.shape))

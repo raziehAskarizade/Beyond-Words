@@ -130,6 +130,7 @@ class GraphConstructor(ABC):
 
     def load_data(self, idx: int):
         self._graphs[idx] = torch.load(path.join(self.save_path, f'{self.var.graphs_name[idx]}.pt'))
+        self._graphs[idx].to(self.device)
 
     def load_data_list(self, ids: List | Tuple | range | np.array | torch.Tensor | any):
         if torch.max(torch.tensor(ids) >= self.var.graph_num) == 1:
@@ -138,9 +139,9 @@ class GraphConstructor(ABC):
 
         for i in ids:
             self._graphs[i] = torch.load(path.join(self.save_path, f'{self.var.graphs_name[i]}.pt'))
+            self._graphs[i].to(self.device)
 
     def draw_graph(self, idx: int):
-        print(self._graphs[idx].x[0])
         g = to_networkx(self.get_graph(idx), to_undirected=True)
         layout = nx.spring_layout(g)
         nx.draw(g, pos=layout)
@@ -148,14 +149,14 @@ class GraphConstructor(ABC):
     def save_all_data_compressed(self):
         for i in range(len(self._graphs)):
             graph = self.to_graph_indexed(self.raw_data[i])
-            torch.save(graph, path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt'))
+            torch.save(graph.to('cpu'), path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt'))
         self.var.save_to_file(path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
 
 
     def save_data_range(self, start: int, end: int):
         for i in range(start, end):
             graph = self.to_graph_indexed(self.raw_data[i])
-            torch.save(graph, path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt'))
+            torch.save(graph.to('cpu'), path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt'))
 
     def load_all_data_comppressed(self):
         self.load_var()
@@ -163,15 +164,18 @@ class GraphConstructor(ABC):
             if i % 100 == 0 : 
                 print(f'data loading {i}')
             self._graphs[i] = self.convert_indexed_nodes_to_vector_nodes(torch.load(path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt')))
+            self._graphs[i].to(self.device)
 
     def load_data_range(self, start: int, end: int):
         for i in range(start, end):
             self._graphs[i] = self.convert_indexed_nodes_to_vector_nodes(torch.load(path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt')))
+            self._graphs[i].to(self.device)
 
     def save_data_compressed(self , idx: int):
         graph = self.to_graph_indexed(self.raw_data[idx])
-        torch.save(graph, path.join(self.save_path, f'{self.var.graphs_name[idx]}_compressed.pt'))
+        torch.save(graph.to('cpu'), path.join(self.save_path, f'{self.var.graphs_name[idx]}_compressed.pt'))
 
     def load_data_compressed(self , idx: int):
         basic_graph = torch.load(path.join(self.save_path, f'{self.var.graphs_name[idx]}_compressed.pt'))
         self._graphs[idx] = self.convert_indexed_nodes_to_vector_nodes(basic_graph)
+        self._graphs[idx].to(self.device)
