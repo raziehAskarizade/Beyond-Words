@@ -1,7 +1,7 @@
 import copy
 
 from GraphAugmentor import GraphAugmentor
-from Scripts.DataManager.GraphLoader.GraphLoader import GraphLoader
+from Scripts.DataManager.GraphLoader.GraphLoader import GraphDataModule
 import torch
 import pandas as pd
 import numpy as np
@@ -14,7 +14,7 @@ class DecreaseEdgeGraphAugmentor(GraphAugmentor):
         self._reduce_ratio = reduce_ratio
         self._training = training
 
-    def augment(self, graph_loader: GraphLoader):
+    def augment(self, graph_loader: GraphDataModule):
         augmented_graph_loader = graph_loader if self.inplace else copy.copy(graph_loader)
         device = graph_loader.device
         target_edge_count = int((1-self._reduce_ratio)*augmented_graph_loader.edge_count)

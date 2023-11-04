@@ -1,10 +1,10 @@
 
-from Scripts.DataManager.GraphLoader.GraphLoader import GraphLoader
+from Scripts.DataManager.GraphLoader.GraphLoader import GraphDataModule
 import torch
 from sklearn.model_selection import train_test_split
 
 
-class NLabeledGraphLoader(GraphLoader):
+class NLabeledGraphLoader(GraphDataModule):
 
     def __init__(self, nodes_x, nodes_y, edge_index, batch_size, device,
                  test_size=0.2, val_size=0.15, *args, **kwargs):

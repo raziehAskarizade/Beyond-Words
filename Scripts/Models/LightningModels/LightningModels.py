@@ -13,11 +13,11 @@ class BaseLightningModel(L.LightningModule):
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.model = model
+        # self.save_hyperparameters(ignore=["model"])
+        self.save_hyperparameters("model", logger=False)
         self.optimizer = self._get_optimizer(optimizer)
         self.lr_scheduler= self._get_lr_scheduler(lr_scheduler)
         self.loss_func = self._get_loss_func(loss_func)
-        self.save_hyperparameters(ignore=['model'])
-        print(f'device: {self.device}')
 
     def forward(self, data_batch, *args, **kwargs):
         return self.model(data_batch)
@@ -28,7 +28,7 @@ class BaseLightningModel(L.LightningModule):
         labels = labels.to(self.device)
         out_features = self(data)
         loss = self.loss_func(out_features, labels.view(out_features.shape))
-        self.log('training_loss', loss, batch_size=self.batch_size, on_epoch=True, on_step=False)
+        self.log('train_loss', loss, batch_size=self.batch_size, on_epoch=True, on_step=False)
         return loss, out_features
 
     def validation_step(self, data_batch, *args, **kwargs):
@@ -52,7 +52,7 @@ class BaseLightningModel(L.LightningModule):
             "optimizer": self.optimizer,
             "lr_scheduler": {
                 "scheduler": self.lr_scheduler,
-                "monitor": "training_loss",
+                "monitor": "train_loss",
                 "interval": "epoch",
                 "frequency": 1
             }
@@ -70,7 +70,7 @@ class BaseLightningModel(L.LightningModule):
         #     "optimizer": optimizer,
         #     "lr_scheduler": {
         #         "scheduler": scheduler,
-        #         "monitor": "training_loss",
+        #         "monitor": "train_loss",
         #         "interval": "step", #"epoch"
         #         "frequency": 1
         #     }
@@ -93,7 +93,7 @@ class BinaryLightningModel(BaseLightningModel):
         loss, out_features = super(BinaryLightningModel, self).training_step(data_batch, *args, **kwargs)
         predicted_labels = out_features if out_features.shape[1] < 2 else torch.argmax(out_features, dim=1)
         self.train_acc(predicted_labels, data_batch[1].view(predicted_labels.shape))
-        self.log('training_acc', self.train_acc, prog_bar=True, on_epoch=True, on_step=False, batch_size=self.batch_size)
+        self.log('train_acc', self.train_acc, prog_bar=True, on_epoch=True, on_step=False, batch_size=self.batch_size)
         return loss
 
     def validation_step(self, data_batch, *args, **kwargs):
@@ -120,7 +120,7 @@ class MultiClassLightningModel(BaseLightningModel):
         loss, out_features = super(MultiClassLightningModel, self).training_step(data_batch, *args, **kwargs)
         predicted_labels = torch.argmax(out_features, dim=1)
         self.train_acc(predicted_labels, data_batch[1].view(predicted_labels.shape))
-        self.log('training_acc', self.train_acc, prog_bar=True, on_epoch=True, on_step=False)
+        self.log('train_acc', self.train_acc, prog_bar=True, on_epoch=True, on_step=False)
         return loss
 
     def validation_step(self, data_batch, *args, **kwargs):
@@ -147,7 +147,7 @@ class MultiLabelLightningModel(BaseLightningModel):
         loss, out_features = super(MultiLabelLightningModel, self).training_step(data_batch, *args, **kwargs)
         predicted_labels = out_features
         self.train_acc(predicted_labels, data_batch[1].view(predicted_labels.shape))
-        self.log('training_acc', self.train_acc, prog_bar=True, on_epoch=True, on_step=False)
+        self.log('train_acc', self.train_acc, prog_bar=True, on_epoch=True, on_step=False)
         return loss
 
     def validation_step(self, data_batch, *args, **kwargs):
