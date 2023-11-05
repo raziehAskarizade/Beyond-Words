@@ -223,3 +223,7 @@ logs/
 
 
 *.ckpt
+
+
+# temporary files:
+ml-latest-small*
