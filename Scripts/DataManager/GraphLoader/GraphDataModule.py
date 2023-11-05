@@ -1,24 +1,22 @@
-from typing import List, Set, Tuple, Any
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 from pytorch_lightning.utilities.types import EVAL_DATALOADERS, TRAIN_DATALOADERS
 from torch_geometric.data.lightning.datamodule import LightningDataModule
-from torch_geometric.utils import augmentation
 import torch
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from torch_geometric.utils import subgraph, train_test_split_edges
+from torch_geometric.utils import subgraph
 from torch_geometric.data import Data
 
 from Scripts.Configs.ConfigClass import Config
 from Scripts.Utils.GraphCollection.GraphCollection import GraphCollection
 
 
-class GraphLoader(LightningDataModule):
+class GraphDataModule(LightningDataModule):
 
     def __init__(self, config: Config, device, has_val: bool, has_test: bool, test_size=0.2, val_size=0.15, *args, **kwargs):
-        super(GraphLoader, self).__init__(has_val, has_test, **kwargs)
+        super(GraphDataModule, self).__init__() #has_val, has_test, **kwargs)
         self.config = config
         self.test_size = test_size
         self.val_size = val_size
@@ -47,6 +45,10 @@ class GraphLoader(LightningDataModule):
     @abstractmethod
     def teardown(self, stage: str) -> None:
         pass
+    
+    @abstractmethod
+    def zero_rule_baseline():
+        pass
 
     # def predict_dataloader(self) -> EVAL_DATALOADERS:
     # def transfer_batch_to_device(self, batch: Any, device: torch.device, dataloader_idx: int) -> Any:
@@ -54,7 +56,7 @@ class GraphLoader(LightningDataModule):
     # def on_after_batch_transfer(self, batch: Any, dataloader_idx: int) -> Any:
 
 
-class HomogeneousGraphLoader(GraphLoader):
+class HomogeneousGraphLoader(GraphDataModule):
 
     def __init__(self, graph: Data, device, test_size=0.2, val_size=0.15, *args, **kwargs):
         super(HomogeneousGraphLoader, self).__init__(device, test_size, val_size, *args, **kwargs)
@@ -136,7 +138,7 @@ class HomogeneousGraphLoader(GraphLoader):
         self._sub_node_tensor_index = torch.unique(self._sub_edge_tensor_index)
 
 
-class CollectionGraphLoader(GraphLoader):
+class CollectionGraphLoader(GraphDataModule):
 
     def __init__(self, graphs: GraphCollection, device, test_size=0.2, val_size=0.15, *args, **kwargs):
         super(CollectionGraphLoader, self).__init__(device, test_size, val_size, *args, **kwargs)
@@ -152,5 +154,5 @@ class CollectionGraphLoader(GraphLoader):
         pass
 
 
-class KnowledgeGraphLoader(GraphLoader):
+class KnowledgeGraphLoader(GraphDataModule):
     pass
