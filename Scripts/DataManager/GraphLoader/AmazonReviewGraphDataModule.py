@@ -1,3 +1,4 @@
+import numpy as np
 from os import path
 from typing import Dict
 
@@ -7,10 +8,11 @@ from torch_geometric.loader import DataLoader
 from Scripts.Configs.ConfigClass import Config
 from Scripts.DataManager.GraphConstructor.CoOccurrenceGraphConstructor import CoOccurrenceGraphConstructor
 from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor, TextGraphType
+from Scripts.DataManager.GraphLoader.GraphDataModule import GraphDataModule
 from torch.utils.data.dataset import random_split
 import torch
 from Scripts.DataManager.Datasets.GraphConstructorDataset import GraphConstructorDataset
-from Scripts.DataManager.GraphLoader.GraphLoader import GraphDataModule
+
 
 
 class AmazonReviewGraphDataModule(GraphDataModule):
@@ -19,10 +21,9 @@ class AmazonReviewGraphDataModule(GraphDataModule):
                  drop_last=True, train_data_path='', test_data_path='', graphs_path='', batch_size = 32,
                  device='cpu', shuffle = False, num_data_load=-1,
                  graph_type: TextGraphType = TextGraphType.CO_OCCURRENCE, *args, **kwargs):
-        kwargs['num_workers'] = num_workers
-        kwargs['batch_size'] = batch_size
-        kwargs['num_workers'] = num_workers
-        kwargs['shuffle'] = shuffle
+        # kwargs['num_workers'] = num_workers
+        # kwargs['batch_size'] = batch_size
+        # kwargs['shuffle'] = shuffle
         super(AmazonReviewGraphDataModule, self)\
             .__init__(config, device, has_val, has_test, test_size, val_size, *args, **kwargs)
 
@@ -70,9 +71,9 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         self.num_classes = len(torch.unique(self.labels))
         self.__train_dataset, self.__val_dataset, self.__test_dataset =\
             random_split(self.dataset, [1-self.val_size-self.test_size, self.val_size, self.test_size])
-        self.__train_dataloader =  DataLoader(self.__train_dataset, batch_size=self.batch_size, drop_last=self.drop_last, shuffle=self.shuffle, num_workers=self.num_workers, persistent_workers=True)
-        self.__test_dataloader =  DataLoader(self.__test_dataset, batch_size=self.batch_size, num_workers=self.num_workers, persistent_workers=True)
-        self.__val_dataloader =  DataLoader(self.__val_dataset, batch_size=self.batch_size, num_workers=self.num_workers, persistent_workers=True)
+        self.__train_dataloader =  DataLoader(self.__train_dataset, batch_size=self.batch_size, drop_last=self.drop_last, shuffle=self.shuffle, num_workers=0, persistent_workers=False)
+        self.__test_dataloader =  DataLoader(self.__test_dataset, batch_size=self.batch_size, num_workers=0, persistent_workers=False)
+        self.__val_dataloader =  DataLoader(self.__val_dataset, batch_size=self.batch_size, num_workers=0, persistent_workers=False)
         
     def prepare_data(self):
         pass

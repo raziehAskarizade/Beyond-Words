@@ -1,13 +1,14 @@
 from abc import abstractmethod
 
 from pytorch_lightning.utilities.types import EVAL_DATALOADERS, TRAIN_DATALOADERS
-from torch_geometric.data.lightning.datamodule import LightningDataModule
+from lightning.pytorch import LightningDataModule
 import torch
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from torch_geometric.utils import subgraph
 from torch_geometric.data import Data
+# from torch_geometric.data.lightning.datamodule import LightningDataModule
 
 from Scripts.Configs.ConfigClass import Config
 from Scripts.Utils.GraphCollection.GraphCollection import GraphCollection
@@ -16,7 +17,7 @@ from Scripts.Utils.GraphCollection.GraphCollection import GraphCollection
 class GraphDataModule(LightningDataModule):
 
     def __init__(self, config: Config, device, has_val: bool, has_test: bool, test_size=0.2, val_size=0.15, *args, **kwargs):
-        super(GraphDataModule, self).__init__() #has_val, has_test, **kwargs)
+        super(GraphDataModule, self).__init__()#(has_val, has_test, **kwargs)
         self.config = config
         self.test_size = test_size
         self.val_size = val_size
