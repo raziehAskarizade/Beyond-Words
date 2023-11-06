@@ -1,9 +1,9 @@
 
-import torch
 from torch.nn import Linear
-from torch_geometric.nn import GATv2Conv, GCNConv, GCN2Conv, DenseGCNConv, dense_diff_pool, BatchNorm, MemPooling
+from torch_geometric.nn import GATv2Conv, GCNConv, GCN2Conv, BatchNorm, MemPooling
 from torch_geometric.nn import Sequential as GSequential
 from torch import nn
+
 
 class GcnGatModel1(nn.Module):
     r"""
@@ -121,16 +121,16 @@ class GcnGatModel1(nn.Module):
             (lambda x1, x2, x3: (x1, x2, x3), 'x1, x2, x3 -> x, x2, x3')
         ])
 
-        self.mem_pool = MemPooling(self.bsh, 128, 4, 2)
+        self.mem_pool = MemPooling(self.bsh, bsh2, 4, 2)
         self.output_layer = Linear(self.bsh, self.num_out_features)
 
     def forward(self, x):
+        
         x1, x2, x3, x_enc = self.encoder(x.x, x.edge_index, x.edge_attr)
         x_att, x4 = self.attention(x3, x_enc, x.edge_index, x.edge_attr)
         x_dec, x2, x3 = self.decoder(x1, x2, x_att, x.edge_index, x.edge_attr)
         
         x_pooled, S = self.mem_pool(x_dec, x.batch)
         x_pooled = x_pooled.view(x_pooled.shape[0], -1)
-
-        # return x1
+        
         return self.output_layer(x_pooled)
