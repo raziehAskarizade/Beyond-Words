@@ -65,7 +65,7 @@ class TagsGraphConstructor(GraphConstructor):
         data = HeteroData()
         tags_length = len(self.tags)
         if for_compression:
-            data['dep'].x = torch.full((tags_length,),-1, dtype=torch.float32)
+            data['tag'].x = torch.full((tags_length,),-1, dtype=torch.float32)
             data['word'].x = torch.full((len(doc),),-1, dtype=torch.float32)
         else:
             data['tag'].x = self.__build_initial_tag_vectors(tags_length)
