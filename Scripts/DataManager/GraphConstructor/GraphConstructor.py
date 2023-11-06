@@ -149,14 +149,20 @@ class GraphConstructor(ABC):
     def save_all_data_compressed(self):
         for i in range(len(self._graphs)):
             graph = self.to_graph_indexed(self.raw_data[i])
-            torch.save(graph.to('cpu'), path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt'))
+            try:
+                torch.save(graph.to('cpu'), path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt'))
+            except AttributeError:
+                torch.save(graph, path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt'))
         self.var.save_to_file(path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
 
 
     def save_data_range(self, start: int, end: int):
         for i in range(start, end):
             graph = self.to_graph_indexed(self.raw_data[i])
-            torch.save(graph.to('cpu'), path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt'))
+            try:
+                torch.save(graph.to('cpu'), path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt'))
+            except AttributeError:
+                torch.save(graph, path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt'))
 
     def load_all_data_comppressed(self):
         self.load_var()
@@ -173,7 +179,10 @@ class GraphConstructor(ABC):
 
     def save_data_compressed(self , idx: int):
         graph = self.to_graph_indexed(self.raw_data[idx])
-        torch.save(graph.to('cpu'), path.join(self.save_path, f'{self.var.graphs_name[idx]}_compressed.pt'))
+        try:
+            torch.save(graph.to('cpu'), path.join(self.save_path, f'{self.var.graphs_name[idx]}_compressed.pt'))
+        except AttributeError:
+            torch.save(graph, path.join(self.save_path, f'{self.var.graphs_name[idx]}_compressed.pt'))
 
     def load_data_compressed(self , idx: int):
         basic_graph = torch.load(path.join(self.save_path, f'{self.var.graphs_name[idx]}_compressed.pt'))
