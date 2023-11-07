@@ -21,6 +21,8 @@ class TextGraphType(Flags):
     DEPENDENCY = 2
     SEQUENTIAL = 4
     TAGS = 8
+    FULL = 16
+    SENTENCE = 32
 
 
 class GraphConstructor(ABC):

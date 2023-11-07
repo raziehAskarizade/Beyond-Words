@@ -7,6 +7,10 @@ from torch_geometric.loader import DataLoader
 
 from Scripts.Configs.ConfigClass import Config
 from Scripts.DataManager.GraphConstructor.CoOccurrenceGraphConstructor import CoOccurrenceGraphConstructor
+from Scripts.DataManager.GraphConstructor.TagsGraphConstructor import TagsGraphConstructor
+from Scripts.DataManager.GraphConstructor.DependencyGraphConstructor import DependencyGraphConstructor
+from Scripts.DataManager.GraphConstructor.SequentialGraphConstructor import SequentialGraphConstructor
+from Scripts.DataManager.GraphConstructor.TagDepTokenGraphConstructor import TagDepTokenGraphConstructor
 from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor, TextGraphType
 from Scripts.DataManager.GraphLoader.GraphDataModule import GraphDataModule
 from torch.utils.data.dataset import random_split
@@ -20,7 +24,7 @@ class AmazonReviewGraphDataModule(GraphDataModule):
     def __init__(self, config: Config, has_val: bool, has_test: bool, test_size=0.2, val_size=0.2, num_workers=2,
                  drop_last=True, train_data_path='', test_data_path='', graphs_path='', batch_size = 32,
                  device='cpu', shuffle = False, num_data_load=-1,
-                 graph_type: TextGraphType = TextGraphType.CO_OCCURRENCE | TextGraphType.DEPENDENCY | TextGraphType.TAGS, *args, **kwargs):
+                 graph_type: TextGraphType = TextGraphType.CO_OCCURRENCE | TextGraphType.DEPENDENCY | TextGraphType.TAGS | TextGraphType.FULL | TextGraphType.SENTENCE | TextGraphType.SEQUENTIAL, *args, **kwargs):
         # kwargs['num_workers'] = num_workers
         # kwargs['batch_size'] = batch_size
         # kwargs['shuffle'] = shuffle
@@ -55,14 +59,20 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         self.df = self.df.iloc[:self.num_data_load]
         self.df.index = np.arange(0, self.num_data_load)
         self.graph_constructors = self.__set_graph_constructors(self.graph_type)
+        # activate one line below
         graph_constructor = self.graph_constructors[TextGraphType.CO_OCCURRENCE]
+        # graph_constructor = self.graph_constructors[TextGraphType.DEPENDENCY]
+        # graph_constructor = self.graph_constructors[TextGraphType.SEQUENTIAL]
+        # graph_constructor = self.graph_constructors[TextGraphType.FULL]
+        # graph_constructor = self.graph_constructors[TextGraphType.SENTENCE]
+        # graph_constructor = self.graph_constructors[TextGraphType.TAGS]
         graph_constructor.setup()
         print(f'self.num_data_load: {self.num_data_load}')
         labels = self.df['Polarity'][:self.num_data_load]
         labels = labels.apply(lambda p: 0 if p == 1 else 1).to_numpy()
         labels = torch.from_numpy(labels)
         self.labels = labels.to(torch.float32).view(-1, 1).to(self.device)
-        graph_constructor = self.graph_constructors[TextGraphType.CO_OCCURRENCE]
+        # graph_constructor = self.graph_constructors[TextGraphType.CO_OCCURRENCE]
         
         print(f'self.labels.shape: {self.labels.shape}')
         self.dataset = GraphConstructorDataset(graph_constructor, self.labels)
@@ -101,8 +111,12 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         if TextGraphType.DEPENDENCY in graph_type:
             graph_constructors[TextGraphType.DEPENDENCY] = self.__get_dependency_graph()
         if TextGraphType.SEQUENTIAL in graph_type:
-            pass
+            graph_constructors[TextGraphType.SEQUENTIAL] = self.__get_sequential_graph()
         if TextGraphType.TAGS in graph_type:
+            graph_constructors[TextGraphType.TAGS] = self.__get_tags_graph()
+        if TextGraphType.FULL in graph_type:
+            graph_constructors[TextGraphType.FULL] = self.__get_full_graph()
+        if TextGraphType.SENTENCE in graph_type:
             pass
         return graph_constructors
 
@@ -112,7 +126,19 @@ class AmazonReviewGraphDataModule(GraphDataModule):
     
     def __get_dependency_graph(self):
         print(f'self.num_data_load: {self.num_data_load}')
-        return DependencyGraphConstructor(self.df['Review'][:self.num_data_load], 'data/GraphData/AmazonReview', self.config, lazy_construction=False, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load, device=self.device)
+        return DependencyGraphConstructor(self.df['Review'][:self.num_data_load], 'data/GraphData/AmazonReview', self.config, lazy_construction=False, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load, device=self.device , use_node_dependencies=True)
+    
+    def __get_sequential_graph(self):
+        print(f'self.num_data_load: {self.num_data_load}')
+        return SequentialGraphConstructor(self.df['Review'][:self.num_data_load], 'data/GraphData/AmazonReview', self.config, lazy_construction=False, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load, device=self.device , use_general_node=True)
+    
+    def __get_tags_graph(self):
+        print(f'self.num_data_load: {self.num_data_load}')
+        return TagsGraphConstructor(self.df['Review'][:self.num_data_load], 'data/GraphData/AmazonReview', self.config, lazy_construction=False, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load, device=self.device)
+    
+    def __get_full_graph(self):
+        print(f'self.num_data_load: {self.num_data_load}')
+        return TagDepTokenGraphConstructor(self.df['Review'][:self.num_data_load], 'data/GraphData/AmazonReview', self.config, lazy_construction=False, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load, device=self.device, use_sentence_nodes=False , use_general_node=True)
     
     def zero_rule_baseline(self):
         return f'zero_rule baseline: {(len(self.labels[self.labels>0.5])* 100.0 / len(self.labels))  : .2f}%'
