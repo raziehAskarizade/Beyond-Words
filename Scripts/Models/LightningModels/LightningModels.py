@@ -16,7 +16,7 @@ class BaseLightningModel(L.LightningModule):
         # self.save_hyperparameters(ignore=["model"])
         self.save_hyperparameters("model", logger=False)
         self.optimizer = self._get_optimizer(optimizer)
-        self.lr_scheduler= self._get_lr_scheduler(lr_scheduler)
+        self.lr_scheduler = self._get_lr_scheduler(lr_scheduler)
         self.loss_func = self._get_loss_func(loss_func)
 
     def forward(self, data_batch, *args, **kwargs):
@@ -57,6 +57,11 @@ class BaseLightningModel(L.LightningModule):
                 "frequency": 1
             }
         }
+
+    def update_learning_rate(self, learning_rate: float):
+        self.learning_rate = learning_rate
+        for g in self.optimizer.param_groups:
+            g['lr'] = learning_rate
 
     def _get_optimizer(self, optimizer):
         return optimizer if optimizer is not None else torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
