@@ -66,10 +66,10 @@ class SequentialGraphConstructor(GraphConstructor):
         if len(doc) < 2:
             return
         if self.use_general_node:
-            return self.__create_graph_with_general_node(doc)
+            return self._create_graph_with_general_node(doc)
         else:
-            return self.__create_graph(doc)
-    def __create_graph(self , doc , for_compression=False):
+            return self._create_graph(doc)
+    def _create_graph(self , doc , for_compression=False):
         docs_length = len(doc)
         node_attr = torch.zeros((len(doc), self.nlp.vocab.vectors_length), dtype=torch.float32)
         if for_compression:
@@ -91,15 +91,15 @@ class SequentialGraphConstructor(GraphConstructor):
                 edge_attr.append(self.settings["token_token_weight"]) 
         edge_index = torch.transpose(torch.tensor(edge_index, dtype=torch.long) , 0 , 1)
         return Data(x=node_attr, edge_index=edge_index,edge_attr=edge_attr)
-    def __build_initial_general_vector(self):
+    def _build_initial_general_vector(self):
         return torch.zeros((1 , self.nlp.vocab.vectors_length), dtype=torch.float32)
-    def __create_graph_with_general_node(self , doc , for_compression=False):
+    def _create_graph_with_general_node(self , doc , for_compression=False):
         data = HeteroData()
         if for_compression:
             data['general'].x = torch.full((1,),-1, dtype=torch.float32)
             data['word'].x = torch.full((len(doc),),-1, dtype=torch.float32)
         else:
-            data['general'].x = self.__build_initial_general_vector()
+            data['general'].x = self._build_initial_general_vector()
             data['word'].x = torch.zeros((len(doc) , self.nlp.vocab.vectors_length), dtype=torch.float32)
         word_general_edge_index = []
         general_word_edge_index = []
@@ -149,9 +149,9 @@ class SequentialGraphConstructor(GraphConstructor):
         if len(doc) < 2:
             return
         if self.use_general_node:
-            return self.__create_graph_with_general_node(doc, for_compression=True)
+            return self._create_graph_with_general_node(doc, for_compression=True)
         else:
-            return self.__create_graph(doc, for_compression=True)
+            return self._create_graph(doc, for_compression=True)
     def convert_indexed_nodes_to_vector_nodes(self, graph):
         if self.use_general_node:
             words = torch.zeros((len(graph['word'].x) , self.nlp.vocab.vectors_length), dtype=torch.float32)
@@ -161,7 +161,7 @@ class SequentialGraphConstructor(GraphConstructor):
                 else:
                     words[i] = torch.zeros((self.nlp.vocab.vectors_length) , dtype=torch.float32)
             graph['word'].x = words
-            graph['general'].x = self.__build_initial_general_vector()
+            graph['general'].x = self._build_initial_general_vector()
         else:
             words = torch.zeros((len(graph.x) , self.nlp.vocab.vectors_length), dtype=torch.float32)
             for i in range(len(graph.x)):

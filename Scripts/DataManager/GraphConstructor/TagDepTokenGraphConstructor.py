@@ -28,7 +28,7 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         super(TagDepTokenGraphConstructor, self)\
             .__init__(texts, self._Variables(), save_path, config, lazy_construction, load_preprocessed_data,
                       naming_prepend , use_compression)
-        self.settings = {"dep_token_weight" : 1, "token_token_weight" : 2, "tag_token_weight" : 1, "general_token_weight" : 1, "general_sentence_weight" : 1, "sentence_token_weight" : 1}
+        self.settings = {"dep_token_weight" : 1, "token_token_weight" : 2, "tag_token_weight" : 1, "general_token_weight" : 1, "general_sentence_weight" : 1, "token_sentence_weight" : 1}
         self.use_sentence_nodes = use_sentence_nodes
         self.use_general_node = use_general_node
         self.var.nlp_pipeline = self.config.spacy.pipeline
@@ -95,9 +95,40 @@ class TagDepTokenGraphConstructor(GraphConstructor):
     def __build_initial_general_vector(self):
         return torch.zeros((1 , self.nlp.vocab.vectors_length), dtype=torch.float32)    
     def __create_graph_with_sentences(self , doc , for_compression=False):
-        graph = self.create_graph(doc,for_compression,False)
-        # TODO : add sentence nodes here
-        pass
+        data = self.__create_graph(doc,for_compression,False)
+        sentence_embeddings = [sent.vector for sent in doc.sents]
+        data['sentence'].x = torch.tensor(sentence_embeddings, dtype=torch.float32)
+        sentence_general_edge_index = []
+        general_sentence_edge_index = []
+        sentence_word_edge_index = []
+        word_sentence_edge_index = []
+        sentence_general_edge_attr = []
+        general_sentence_edge_attr = []
+        sentence_word_edge_attr = []
+        word_sentence_edge_attr = []
+        if self.use_general_node:
+            for i , _x in enumerate(doc.sents):
+                # connecting sentences to general node
+                sentence_general_edge_index.append([i , 0])
+                general_sentence_edge_index.append([0 , i])
+                sentence_general_edge_attr.append(self.settings['general_sentence_weight'])
+                general_sentence_edge_attr.append(self.settings['general_sentence_weight']) # different weight for directed edges can be set in the future
+        for token in doc:
+            # connecting words to sentences
+            word_sentence_edge_index.append([token.i , token.sent.start])
+            sentence_word_edge_index.append([token.sent.start , token.i])
+            word_sentence_edge_attr.append(self.settings['token_sentence_weight'])
+            word_sentence_edge_attr.append(self.settings['token_sentence_weight'])
+        if self.use_general_node:
+            data['general' , 'general_sentence' , 'sentence'].edge_index = torch.transpose(torch.tensor(general_sentence_edge_index, dtype=torch.long) , 0 , 1)
+            data['sentence' , 'sentence_general' , 'general'].edge_index = torch.transpose(torch.tensor(sentence_general_edge_index, dtype=torch.long) , 0 , 1)
+            data['general' , 'general_sentence' , 'sentence'].edge_attr = general_sentence_edge_attr
+            data['sentence' , 'sentence_general' , 'general'].edge_attr = sentence_general_edge_attr
+        data['word' , 'word_sentence' , 'sentence'].edge_index = torch.transpose(torch.tensor(sentence_word_edge_index, dtype=torch.long) , 0 , 1)
+        data['sentence' , 'sentence_word' , 'word'].edge_index = torch.transpose(torch.tensor(word_sentence_edge_index, dtype=torch.long) , 0 , 1)
+        data['word' , 'word_sentence' , 'sentence'].edge_attr = word_sentence_edge_attr
+        data['sentence' , 'sentence_word' , 'word'].edge_attr = sentence_word_edge_attr
+        return data
     def __create_graph(self , doc , for_compression=False, use_general_node=True):
         # nodes size is dependencies + tokens
         data = HeteroData()
@@ -192,22 +223,18 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         else:
             return self.__create_graph(doc,for_compression=True,use_general_node=self.use_general_node)
     def convert_indexed_nodes_to_vector_nodes(self, graph):
-        print(graph)
-        if self.use_sentence_nodes:
-            # TODO : complete this part with sentences later
-            pass
-        else:
-            words = torch.zeros((len(graph['word'].x) , self.nlp.vocab.vectors_length), dtype=torch.float32)
-            for i in range(len(graph['word'].x)):
-                if graph['word'].x[i] in self.nlp.vocab.vectors:
-                    words[i] = torch.tensor(self.nlp.vocab.vectors[graph['word'].x[i]])
-                else:
-                    words[i] = torch.zeros((self.nlp.vocab.vectors_length) , dtype=torch.float32)
-            graph['word'].x = words
-            graph['dep'].x = self.__build_initial_dependency_vectors(len(self.dependencies))
-            graph['tag'].x = self.__build_initial_tag_vectors(len(self.tags))
-            if self.use_general_node:
-                graph['general'].x = self.__build_initial_general_vector()
+        words = torch.zeros((len(graph['word'].x) , self.nlp.vocab.vectors_length), dtype=torch.float32)
+        for i in range(len(graph['word'].x)):
+            if graph['word'].x[i] in self.nlp.vocab.vectors:
+                words[i] = torch.tensor(self.nlp.vocab.vectors[graph['word'].x[i]])
+            else:
+                words[i] = torch.zeros((self.nlp.vocab.vectors_length) , dtype=torch.float32)
+        graph['word'].x = words
+        graph['dep'].x = self.__build_initial_dependency_vectors(len(self.dependencies))
+        graph['tag'].x = self.__build_initial_tag_vectors(len(self.tags))
+        if self.use_general_node:
+            graph['general'].x = self.__build_initial_general_vector()
+        # sentences are not coded - we dont need to creat them
         return graph
         
 

@@ -11,6 +11,7 @@ from Scripts.DataManager.GraphConstructor.TagsGraphConstructor import TagsGraphC
 from Scripts.DataManager.GraphConstructor.DependencyGraphConstructor import DependencyGraphConstructor
 from Scripts.DataManager.GraphConstructor.SequentialGraphConstructor import SequentialGraphConstructor
 from Scripts.DataManager.GraphConstructor.TagDepTokenGraphConstructor import TagDepTokenGraphConstructor
+from Scripts.DataManager.GraphConstructor.SentenceGraphConstructor import SentenceGraphConstructor
 from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor, TextGraphType
 from Scripts.DataManager.GraphLoader.GraphDataModule import GraphDataModule
 from torch.utils.data.dataset import random_split
@@ -117,7 +118,7 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         if TextGraphType.FULL in graph_type:
             graph_constructors[TextGraphType.FULL] = self.__get_full_graph()
         if TextGraphType.SENTENCE in graph_type:
-            pass
+            graph_constructors[TextGraphType.FULL] = self.__get_sentence_graph()
         return graph_constructors
 
     def __get_co_occurrence_graph(self):
@@ -140,5 +141,8 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         print(f'self.num_data_load: {self.num_data_load}')
         return TagDepTokenGraphConstructor(self.df['Review'][:self.num_data_load], 'data/GraphData/AmazonReview', self.config, lazy_construction=False, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load, device=self.device, use_sentence_nodes=False , use_general_node=True)
     
+    def __get_sentence_graph(self):
+        print(f'self.num_data_load: {self.num_data_load}')
+        return SentenceGraphConstructor(self.df['Review'][:self.num_data_load], 'data/GraphData/AmazonReview', self.config, lazy_construction=False, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load, device=self.device, use_general_node=True)
     def zero_rule_baseline(self):
         return f'zero_rule baseline: {(len(self.labels[self.labels>0.5])* 100.0 / len(self.labels))  : .2f}%'
