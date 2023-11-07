@@ -20,7 +20,7 @@ class AmazonReviewGraphDataModule(GraphDataModule):
     def __init__(self, config: Config, has_val: bool, has_test: bool, test_size=0.2, val_size=0.2, num_workers=2,
                  drop_last=True, train_data_path='', test_data_path='', graphs_path='', batch_size = 32,
                  device='cpu', shuffle = False, num_data_load=-1,
-                 graph_type: TextGraphType = TextGraphType.CO_OCCURRENCE, *args, **kwargs):
+                 graph_type: TextGraphType = TextGraphType.CO_OCCURRENCE | TextGraphType.DEPENDENCY | TextGraphType.TAGS, *args, **kwargs):
         # kwargs['num_workers'] = num_workers
         # kwargs['batch_size'] = batch_size
         # kwargs['shuffle'] = shuffle
@@ -94,11 +94,12 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         return self.__val_dataloader 
 
     def __set_graph_constructors(self, graph_type: TextGraphType):
+        
         graph_constructors: Dict[TextGraphType, GraphConstructor] = {}
         if TextGraphType.CO_OCCURRENCE in graph_type:
             graph_constructors[TextGraphType.CO_OCCURRENCE] = self.__get_co_occurrence_graph()
         if TextGraphType.DEPENDENCY in graph_type:
-            pass
+            graph_constructors[TextGraphType.DEPENDENCY] = self.__get_dependency_graph()
         if TextGraphType.SEQUENTIAL in graph_type:
             pass
         if TextGraphType.TAGS in graph_type:
@@ -108,6 +109,10 @@ class AmazonReviewGraphDataModule(GraphDataModule):
     def __get_co_occurrence_graph(self):
         print(f'self.num_data_load: {self.num_data_load}')
         return CoOccurrenceGraphConstructor(self.df['Review'][:self.num_data_load], 'data/GraphData/AmazonReview', self.config, lazy_construction=False, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load, device=self.device)
+    
+    def __get_dependency_graph(self):
+        print(f'self.num_data_load: {self.num_data_load}')
+        return DependencyGraphConstructor(self.df['Review'][:self.num_data_load], 'data/GraphData/AmazonReview', self.config, lazy_construction=False, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load, device=self.device)
     
     def zero_rule_baseline(self):
         return f'zero_rule baseline: {(len(self.labels[self.labels>0.5])* 100.0 / len(self.labels))  : .2f}%'
