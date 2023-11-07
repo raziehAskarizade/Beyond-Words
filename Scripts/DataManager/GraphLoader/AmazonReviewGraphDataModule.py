@@ -7,6 +7,7 @@ from torch_geometric.loader import DataLoader
 
 from Scripts.Configs.ConfigClass import Config
 from Scripts.DataManager.GraphConstructor.CoOccurrenceGraphConstructor import CoOccurrenceGraphConstructor
+from Scripts.DataManager.GraphConstructor.TagsGraphConstructor import TagsGraphConstructor
 from Scripts.DataManager.GraphConstructor.DependencyGraphConstructor import DependencyGraphConstructor
 from Scripts.DataManager.GraphConstructor.SequentialGraphConstructor import SequentialGraphConstructor
 from Scripts.DataManager.GraphConstructor.TagDepTokenGraphConstructor import TagDepTokenGraphConstructor
@@ -23,7 +24,7 @@ class AmazonReviewGraphDataModule(GraphDataModule):
     def __init__(self, config: Config, has_val: bool, has_test: bool, test_size=0.2, val_size=0.2, num_workers=2,
                  drop_last=True, train_data_path='', test_data_path='', graphs_path='', batch_size = 32,
                  device='cpu', shuffle = False, num_data_load=-1,
-                 graph_type: TextGraphType = TextGraphType.CO_OCCURRENCE | TextGraphType.DEPENDENCY | TextGraphType.TAGS, *args, **kwargs):
+                 graph_type: TextGraphType = TextGraphType.CO_OCCURRENCE | TextGraphType.DEPENDENCY | TextGraphType.TAGS | TextGraphType.FULL | TextGraphType.SENTENCE | TextGraphType.SEQUENTIAL, *args, **kwargs):
         # kwargs['num_workers'] = num_workers
         # kwargs['batch_size'] = batch_size
         # kwargs['shuffle'] = shuffle
@@ -58,14 +59,20 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         self.df = self.df.iloc[:self.num_data_load]
         self.df.index = np.arange(0, self.num_data_load)
         self.graph_constructors = self.__set_graph_constructors(self.graph_type)
+        # activate one line below
         graph_constructor = self.graph_constructors[TextGraphType.CO_OCCURRENCE]
+        # graph_constructor = self.graph_constructors[TextGraphType.DEPENDENCY]
+        # graph_constructor = self.graph_constructors[TextGraphType.SEQUENTIAL]
+        # graph_constructor = self.graph_constructors[TextGraphType.FULL]
+        # graph_constructor = self.graph_constructors[TextGraphType.SENTENCE]
+        # graph_constructor = self.graph_constructors[TextGraphType.TAGS]
         graph_constructor.setup()
         print(f'self.num_data_load: {self.num_data_load}')
         labels = self.df['Polarity'][:self.num_data_load]
         labels = labels.apply(lambda p: 0 if p == 1 else 1).to_numpy()
         labels = torch.from_numpy(labels)
         self.labels = labels.to(torch.float32).view(-1, 1).to(self.device)
-        graph_constructor = self.graph_constructors[TextGraphType.CO_OCCURRENCE]
+        # graph_constructor = self.graph_constructors[TextGraphType.CO_OCCURRENCE]
         
         print(f'self.labels.shape: {self.labels.shape}')
         self.dataset = GraphConstructorDataset(graph_constructor, self.labels)
