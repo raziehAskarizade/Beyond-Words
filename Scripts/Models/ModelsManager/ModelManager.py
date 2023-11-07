@@ -1,74 +1,96 @@
+from Scripts.Models.LightningModels.LightningModels import BaseLightningModel
 from abc import ABC, abstractmethod
-from builtins import *
-from typing import Tuple, Dict, Callable
+from typing import List, Optional
 
-from Scripts.Utils.enums import Optimizer, LossType
 import torch
-from torch import nn
-from Scripts.Models.ModelsManager.Helpers.optimizer_factory import *
-from Scripts.Models.ModelsManager.Helpers.loss_function_factory import *
+import lightning as L
+from lightning.pytorch.callbacks import Callback, ModelCheckpoint, EarlyStopping
+from lightning.pytorch.loggers import Logger, CSVLogger
+from lightning.pytorch.tuner import Tuner
 
 
 class ModelManager(ABC):
 
-    def __init__(self, optimizer_type: Optimizer, loss_type: LossType,
-                 device=torch.device('cpu'), lr=0.01, weight_decay=0.001):
+    def __init__(self,
+                 torch_model: torch.nn.Module,
+                 lightning_model: BaseLightningModel,
+                 model_save_dir: str = '~/Desktop',
+                 log_dir: str = 'logs/',
+                 log_name: str = 'model_logs',
+                 device='cpu',
+                 max_epochs = 100,
+                 ckpt_path: str|None=None):
+        self.torch_model = torch_model
+        self.lightning_model: BaseLightningModel = lightning_model
+        self.log_dir = log_dir
+        self.log_name = log_name
+        self.model_save_dir = model_save_dir
         self.device = device
-        self.lr = lr
-        self.weight_decay = weight_decay
+        self.accelerator = 'cpu' if self.device=='cpu' else 'gpu'
+        self.max_epochs = max_epochs
+        self.ckpt_path = ckpt_path
 
-        self._optimizer_setters: Dict[Optimizer | int | str, Callable] = {
-            Optimizer.ADAM: create_adam_optimizer,
-            Optimizer.SGD: create_sgd_optimizer,
-            Optimizer.RMS_PROP: create_rms_prop_optimizer
-        }
+        self.logger = self._create_logger()
+        self.callbacks = self._create_callbacks()
+        self.trainer: L.Trainer = self._create_trainer()
+        self.tuner = Tuner(self.trainer)
+        self.tuning_result = None
 
-        self._loss_functions: Dict[LossType | int | str, Callable] = {
-            LossType.MSE: create_mse_loss,
-            LossType.BCE: create_bce_loss,
-            LossType.CROSS_ENTROPY: create_ce_loss
-        }
+    def tune(self, data_manager, draw_result=True, min_lr=0.0000001, max_lr=0.1):
+        self.tuning_result = self.tuner.lr_find(self.lightning_model, datamodule=data_manager, min_lr=min_lr,max_lr=max_lr)
+        if draw_result:
+            fig = self.tuning_result.plot(suggest=True)
+            fig.show()
+        self.update_learning_rate(self.tuning_result.suggestion())
+        return self.tuning_result.suggestion()
 
-        self.model, self.optimizer, self.loss_func = None, None, None
-        self._create_model(lr, optimizer_type, loss_type)
+    def update_learning_rate(self, lr):
+        self.lightning_model.update_learning_rate(lr)
 
-        self.history = dict()
+    def fit(self, train_dataloaders=None, val_dataloaders=None, datamodule=None, max_epochs = -1, ckpt_path=None):
+        if ckpt_path!=None and ckpt_path != '':
+            self.ckpt_path = ckpt_path
+        if max_epochs>0:
+            self.max_epochs = max_epochs
+            self.trainer = self._create_trainer()
+        self.trainer.fit(self.lightning_model,
+                         datamodule=datamodule,
+                         train_dataloaders=train_dataloaders,
+                         val_dataloaders=val_dataloaders,
+                         ckpt_path = self.ckpt_path
+                         )
+
+    def validate(self, dataloaders=None, datamodule=None):
+        return self.trainer.validate(self.lightning_model,
+                             datamodule=datamodule,
+                             dataloaders=dataloaders)
+
+    def predict(self, dataloaders=None, datamodule=None):
+        return self.trainer.predict(self.lightning_model,
+                             datamodule=datamodule,
+                             dataloaders=dataloaders)
+
+    def _create_trainer(self) -> L.Trainer:
+        return L.Trainer(
+            callbacks=self.callbacks,
+            max_epochs=self.max_epochs,
+            accelerator=self.accelerator,
+            logger=self.logger,
+            num_sanity_val_steps=0,
+            default_root_dir=self.model_save_dir
+        )
 
     @abstractmethod
-    def _create_model(self, lr, optimizer_type, loss_type, **kwargs):
+    def _create_callbacks(self) -> List[Callback]:
         pass
 
-    @staticmethod
-    def _create_loss_func(loss_type):
-        if loss_type == LossType.CROSS_ENTROPY:
-            return nn.CrossEntropyLoss()
-        elif loss_type == LossType.BCE:
-            return nn.BCELoss()
-        elif loss_type == LossType.MSE:
-            return nn.MSELoss()
-        else:
-            raise NotImplementedError("The optimizer type is not implemented!")
-
-    def set_optimizer(self, lr, optimizer=Optimizer.ADAM, **kwargs):
-        if optimizer in self._optimizer_setters:
-            self.optimizer = self._optimizer_setters[optimizer](lr, self.model, **kwargs)
-        else:
-            print('Target optimizer is not implemented or is not added to the dictionary!')
-
-    def set_loss_func(self, loss_type=LossType.MSE, **kwargs):
-        if loss_type in self._loss_functions:
-            self.loss_func = self._loss_functions[loss_type](**kwargs)
-        else:
-            print('Target optimizer is not implemented or is not added to the dictionary!')
+    def _create_logger(self) -> Logger:
+        return CSVLogger(save_dir=self.log_dir, name=self.log_name)
 
     @abstractmethod
-    def train(self, epoch_num: int = 100, lr: float = None, l2_norm: float = None, optimizer: Optimizer = None):
+    def draw_summary(self, dataloader):
         pass
 
     @abstractmethod
-    def evaluate(self):
-        pass
-
-    @abstractmethod
-    def predict(self, node_x, edge_index):
+    def plot_csv_logger(self, loss_names, eval_names):
         pass
