@@ -30,25 +30,11 @@ class DependencyGraphConstructor(GraphConstructor):
                       naming_prepend , use_compression)
         self.settings = {"tokens_dep_weight" : 1,"dep_tokens_weight" : 1, "token_token_weight" : 2}
         self.use_node_dependencies = use_node_dependencies
-        if self.load_preprocessed_data:
-            if not self.lazy_construction:
-                self.load_all_data()
-            else:
-                self.load_var()
-        else:
-            self.var.nlp_pipeline = self.config.spacy.pipeline
-            self.var.graph_num = len(self.raw_data)
-            self.nlp = spacy.load(self.var.nlp_pipeline)
-            self.dependencies = self.nlp.get_pipe("parser").labels
-            if not self.lazy_construction:
-                for i in range(len(self.raw_data)):
-                    if i not in self._graphs:
-                        if i % 100 == 0:
-                            print(f'i: {i}')
-                        self._graphs[i] = self.to_graph(self.raw_data[i])
-                        self.var.graphs_name[i] = f'{self.naming_prepend}_{i}'
-                        # self.save_all_data()
-
+        self.var.nlp_pipeline = self.config.spacy.pipeline
+        self.var.graph_num = len(self.raw_data)
+        self.nlp = spacy.load(self.var.nlp_pipeline)
+        self.dependencies = self.nlp.get_pipe("parser").labels
+        
     def setup(self, load_preprocessed_data = True):
         self.load_preprocessed_data = True
         if load_preprocessed_data:
