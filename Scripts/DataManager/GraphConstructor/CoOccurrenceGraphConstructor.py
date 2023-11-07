@@ -22,9 +22,9 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
             self.nlp_pipeline: str = ''
 
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='', use_compression=True, num_data_load=-1, device='cpu'):
+                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='', use_compression=True, num_data_load=-1):
         super(CoOccurrenceGraphConstructor, self)\
-            .__init__(texts, self._Variables(), save_path, config, lazy_construction, load_preprocessed_data, naming_prepend, use_compression, num_data_load, device)
+            .__init__(texts, self._Variables(), save_path, config, lazy_construction, load_preprocessed_data, naming_prepend, use_compression, num_data_load)
         self.var.nlp_pipeline = self.config.spacy.pipeline
         self.var.graph_num = len(self.raw_data)
         self.nlp = spacy.load(self.var.nlp_pipeline)
@@ -132,7 +132,7 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
         edge_index = co_occurrence_matrix.indices()
         edge_attr = co_occurrence_matrix.values()
         graph = Data(x=node_attr, edge_index=edge_index, edge_attr=edge_attr)
-        return graph.to(self.device)
+        return graph
 
     def to_graph_indexed(self, text: str):
         doc = self.nlp(text)

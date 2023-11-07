@@ -21,8 +21,8 @@ class TextGraphType(Flags):
     DEPENDENCY = 2
     SEQUENTIAL = 4
     TAGS = 8
-    FULL = 16
-    SENTENCE = 32
+    SENTENCE =16
+    FULL = 31
 
 
 class GraphConstructor(ABC):
@@ -31,7 +31,6 @@ class GraphConstructor(ABC):
         def __init__(self):
             self.graphs_name: Dict[int, str] = {}
             self.graph_num: int = 0
-            self.device = 'cpu'
 
         def save_to_file(self, filename: str):
             with open(filename, 'wb') as file:
@@ -48,7 +47,7 @@ class GraphConstructor(ABC):
                 raise ValueError("Invalid file content. Unable to recreate the object.")
 
     def __init__(self, raw_data, variables: _Variables, save_path: str, config: Config, lazy_construction: bool,
-                 load_preprocessed_data: bool, naming_prepend: str = '', use_compression=True, num_data_load=-1, device='cpu'):
+                 load_preprocessed_data: bool, naming_prepend: str = '', use_compression=True, num_data_load=-1):
         
         self.raw_data = raw_data
         self.num_data_load = num_data_load if num_data_load > 0 else len(self.raw_data)
@@ -56,8 +55,6 @@ class GraphConstructor(ABC):
         self.lazy_construction = lazy_construction
         self.load_preprocessed_data = load_preprocessed_data
         self.var = variables
-        self.var.device = device
-        self.device = device
         self.save_path = os.path.join(config.root, save_path)
         self.naming_prepend = naming_prepend
         self.use_compression = use_compression
@@ -93,7 +90,7 @@ class GraphConstructor(ABC):
             else:
                 self._graphs[idx] = self.to_graph(self.raw_data[idx])
                 self.var.graphs_name[idx] = f'{self.naming_prepend}_{idx}'
-        return self._graphs[idx].to(self.device)
+        return self._graphs[idx]
 
     # @abstractmethod
     # def set_graph(self, idx: int):
@@ -128,11 +125,9 @@ class GraphConstructor(ABC):
 
     def load_var(self):
         self.var = self.var.load_from_file(path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
-        self.var.device = self.device
 
     def load_data(self, idx: int):
         self._graphs[idx] = torch.load(path.join(self.save_path, f'{self.var.graphs_name[idx]}.pt'))
-        self._graphs[idx].to(self.device)
 
     def load_data_list(self, ids: List | Tuple | range | np.array | torch.Tensor | any):
         if torch.max(torch.tensor(ids) >= self.var.graph_num) == 1:
@@ -141,7 +136,6 @@ class GraphConstructor(ABC):
 
         for i in ids:
             self._graphs[i] = torch.load(path.join(self.save_path, f'{self.var.graphs_name[i]}.pt'))
-            self._graphs[i].to(self.device)
 
     def draw_graph(self, idx: int):
         g = to_networkx(self.get_graph(idx), to_undirected=True)
@@ -172,12 +166,10 @@ class GraphConstructor(ABC):
             if i % 100 == 0 : 
                 print(f'data loading {i}')
             self._graphs[i] = self.convert_indexed_nodes_to_vector_nodes(torch.load(path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt')))
-            self._graphs[i].to(self.device)
 
     def load_data_range(self, start: int, end: int):
         for i in range(start, end):
             self._graphs[i] = self.convert_indexed_nodes_to_vector_nodes(torch.load(path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt')))
-            self._graphs[i].to(self.device)
 
     def save_data_compressed(self , idx: int):
         graph = self.to_graph_indexed(self.raw_data[idx])
@@ -189,4 +181,3 @@ class GraphConstructor(ABC):
     def load_data_compressed(self , idx: int):
         basic_graph = torch.load(path.join(self.save_path, f'{self.var.graphs_name[idx]}_compressed.pt'))
         self._graphs[idx] = self.convert_indexed_nodes_to_vector_nodes(basic_graph)
-        self._graphs[idx].to(self.device)
