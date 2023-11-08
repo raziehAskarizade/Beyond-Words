@@ -70,12 +70,12 @@ class TagDepTokenGraphConstructor(GraphConstructor):
 
     def to_graph(self, text: str):
         doc = self.nlp(text)
-        if len(doc) < 2:
-            return
+        # if len(doc) < 2:
+        #     return
         if self.use_sentence_nodes:
-            self.__create_graph_with_sentences(doc)
+            return self.__create_graph_with_sentences(doc)
         else:
-            self.__create_graph(doc,use_general_node=self.use_general_node)
+            return self.__create_graph(doc, use_general_node=self.use_general_node)
     
     def __find_dep_index(self , dependency : str):
         for dep_idx in range(len(self.dependencies)):
@@ -89,10 +89,13 @@ class TagDepTokenGraphConstructor(GraphConstructor):
             if self.tags[tag_idx] == tag:
                 return tag_idx
         return -1 # means not found
+    
     def __build_initial_tag_vectors(self , tags_length : int):
         return torch.zeros((tags_length, self.nlp.vocab.vectors_length), dtype=torch.float32)
+    
     def __build_initial_general_vector(self):
-        return torch.zeros((1 , self.nlp.vocab.vectors_length), dtype=torch.float32)    
+        return torch.zeros((1 , self.nlp.vocab.vectors_length), dtype=torch.float32)   
+     
     def __create_graph_with_sentences(self , doc , for_compression=False):
         data = self.__create_graph(doc,for_compression,False)
         sentence_embeddings = [sent.vector for sent in doc.sents]
@@ -128,6 +131,7 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         data['word' , 'word_sentence' , 'sentence'].edge_attr = torch.nn.functional.normalize(torch.tensor(word_sentence_edge_attr, dtype=torch.float32), dim=0)
         data['sentence' , 'sentence_word' , 'word'].edge_attr = torch.nn.functional.normalize(torch.tensor(sentence_word_edge_attr, dtype=torch.float32), dim=0)
         return data
+    
     def __create_graph(self , doc , for_compression=False, use_general_node=True):
         # nodes size is dependencies + tokens
         data = HeteroData()
@@ -210,6 +214,7 @@ class TagDepTokenGraphConstructor(GraphConstructor):
             data['general' , 'general_word' , 'word'].edge_attr = torch.nn.functional.normalize(torch.tensor(general_word_edge_attr, dtype=torch.float32), dim=0)
             data['word' , 'word_general' , 'general'].edge_attr = torch.nn.functional.normalize(torch.tensor(word_general_edge_attr, dtype=torch.float32), dim=0)
         return data
+    
     def draw_graph(self , idx : int):
         # TODO : do this part if needed
         pass
@@ -223,6 +228,7 @@ class TagDepTokenGraphConstructor(GraphConstructor):
             return self.__create_graph(doc,for_compression=True,use_general_node=self.use_general_node)
     def convert_indexed_nodes_to_vector_nodes(self, graph):
         words = torch.zeros((len(graph['word'].x) , self.nlp.vocab.vectors_length), dtype=torch.float32)
+        print(len(graph['word'].x))
         for i in range(len(graph['word'].x)):
             if graph['word'].x[i] in self.nlp.vocab.vectors:
                 words[i] = torch.tensor(self.nlp.vocab.vectors[graph['word'].x[i]])
@@ -235,5 +241,3 @@ class TagDepTokenGraphConstructor(GraphConstructor):
             graph['general'].x = self.__build_initial_general_vector()
         # sentences are not coded - we dont need to creat them
         return graph
-        
-
