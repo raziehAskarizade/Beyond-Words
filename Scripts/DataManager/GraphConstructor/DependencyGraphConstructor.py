@@ -77,7 +77,7 @@ class DependencyGraphConstructor(GraphConstructor):
     def __create_graph(self , doc , for_compression=False):
         node_attr = torch.zeros((len(doc), self.nlp.vocab.vectors_length), dtype=torch.float32)
         if for_compression:
-            node_attr = torch.full((len(doc),),-1, dtype=torch.float32)
+            node_attr = [-1 for i in range(len(doc))]
         edge_index = []
         edge_attr = []
         for token in doc:
@@ -85,7 +85,7 @@ class DependencyGraphConstructor(GraphConstructor):
                 token_id = self.nlp.vocab.strings[token.lemma_]
                 if token_id in self.nlp.vocab.vectors:
                     if for_compression:
-                        node_attr[token.i] = torch.tensor(token_id , dtype=torch.float32)
+                        node_attr[token.i] = token_id
                     else:
                         node_attr[token.i] = torch.tensor(self.nlp.vocab.vectors[token_id])
                 edge_index.append([token.head.i, token.i])
@@ -120,7 +120,7 @@ class DependencyGraphConstructor(GraphConstructor):
         dep_length = len(self.dependencies)
         if for_compression:
             data['dep'].x = torch.full((dep_length,),-1, dtype=torch.float32)
-            data['word'].x = torch.full((len(doc),),-1, dtype=torch.float32)
+            data['word'].x = [-1 for i in range(len(doc))]
         else:
             data['dep'].x = self.__build_initial_dependency_vectors(dep_length)
             data['word'].x = torch.zeros((len(doc) , self.nlp.vocab.vectors_length), dtype=torch.float32)
@@ -135,7 +135,7 @@ class DependencyGraphConstructor(GraphConstructor):
             token_id = self.nlp.vocab.strings[token.lemma_]
             if token_id in self.nlp.vocab.vectors:
                 if for_compression:
-                    data['word'].x[token.i] = torch.tensor(token_id , dtype=torch.float32)
+                    data['word'].x[token.i] = token_id
                 else:
                     data['word'].x[token.i] = torch.tensor(self.nlp.vocab.vectors[token_id])
             if token.dep_ != 'ROOT':
@@ -180,17 +180,13 @@ class DependencyGraphConstructor(GraphConstructor):
             for i in range(len(graph['word'].x)):
                 if graph['word'].x[i] in self.nlp.vocab.vectors:
                     words[i] = torch.tensor(self.nlp.vocab.vectors[graph['word'].x[i]])
-                else:
-                    words[i] = torch.zeros((self.nlp.vocab.vectors_length) , dtype=torch.float32)
             graph['word'].x = words
             graph['dep'].x = self.__build_initial_dependency_vectors(len(self.dependencies))
         else:
             words = torch.zeros((len(graph.x) , self.nlp.vocab.vectors_length), dtype=torch.float32)
             for i in range(len(graph.x)):
                 if graph.x[i] in self.nlp.vocab.vectors:
-                    words[i] = torch.tensor(self.nlp.vocab.vectors[graph['word'].x[i]])
-                else:
-                    words[i] = torch.zeros((self.nlp.vocab.vectors_length) , dtype=torch.float32)
+                    words[i] = torch.tensor(self.nlp.vocab.vectors[graph.x[i]])
             graph.x = words
         return graph
         

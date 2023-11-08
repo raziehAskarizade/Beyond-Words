@@ -100,6 +100,10 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         data = self.__create_graph(doc,for_compression,False)
         sentence_embeddings = [sent.vector for sent in doc.sents]
         data['sentence'].x = torch.tensor(sentence_embeddings, dtype=torch.float32)
+        if for_compression:
+            data['general'].x = torch.full((1,),0, dtype=torch.float32)
+        else:
+            data['general'].x = self.__build_initial_general_vector()
         sentence_general_edge_index = []
         general_sentence_edge_index = []
         sentence_word_edge_index = []
@@ -138,8 +142,8 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         dep_length = len(self.dependencies)
         tag_length = len(self.tags)
         if for_compression:
-            data['dep'].x = torch.full((dep_length,),-1, dtype=torch.float32)
-            data['word'].x = torch.full((len(doc),),-1, dtype=torch.float32)
+            data['dep'].x = torch.full((dep_length,), -1, dtype=torch.float32)
+            data['word'].x = [-1 for i in range(len(doc))]
             data['tag'].x = torch.full((tag_length,), -1, dtype=torch.float32)
             if use_general_node:
                 data['general'].x = torch.full((1,),-1, dtype=torch.float32)
@@ -167,7 +171,7 @@ class TagDepTokenGraphConstructor(GraphConstructor):
             token_id = self.nlp.vocab.strings[token.lemma_]
             if token_id in self.nlp.vocab.vectors:
                 if for_compression:
-                    data['word'].x[token.i] = torch.tensor(token_id , dtype=torch.float32)
+                    data['word'].x[token.i] = token_id
                 else:
                     data['word'].x[token.i] = torch.tensor(self.nlp.vocab.vectors[token_id])
             # adding dependency edges
@@ -228,12 +232,9 @@ class TagDepTokenGraphConstructor(GraphConstructor):
             return self.__create_graph(doc,for_compression=True,use_general_node=self.use_general_node)
     def convert_indexed_nodes_to_vector_nodes(self, graph):
         words = torch.zeros((len(graph['word'].x) , self.nlp.vocab.vectors_length), dtype=torch.float32)
-        print(len(graph['word'].x))
         for i in range(len(graph['word'].x)):
             if graph['word'].x[i] in self.nlp.vocab.vectors:
                 words[i] = torch.tensor(self.nlp.vocab.vectors[graph['word'].x[i]])
-            else:
-                words[i] = torch.zeros((self.nlp.vocab.vectors_length) , dtype=torch.float32)
         graph['word'].x = words
         graph['dep'].x = self.__build_initial_dependency_vectors(len(self.dependencies))
         graph['tag'].x = self.__build_initial_tag_vectors(len(self.tags))
