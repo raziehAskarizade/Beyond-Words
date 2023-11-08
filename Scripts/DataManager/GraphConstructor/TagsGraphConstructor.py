@@ -22,11 +22,11 @@ class TagsGraphConstructor(GraphConstructor):
             self.nlp_pipeline: str = ''
 
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='' , use_compression=True):
+                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='' , use_compression=True, num_data_load=-1):
 
         super(TagsGraphConstructor, self)\
             .__init__(texts, self._Variables(), save_path, config, lazy_construction, load_preprocessed_data,
-                      naming_prepend , use_compression)
+                      naming_prepend , use_compression,num_data_load)
         self.settings = {"tokens_tag_weight" : 1, "token_token_weight" : 2}
         self.var.nlp_pipeline = self.config.spacy.pipeline
         self.var.graph_num = len(self.raw_data)
@@ -116,29 +116,16 @@ class TagsGraphConstructor(GraphConstructor):
                 word_word_edge_attr.append(self.settings["token_token_weight"])
                 word_word_edge_index.append([token.i + 1, token.i])
                 word_word_edge_attr.append(self.settings["token_token_weight"])
-        data['tag', 'tag_word', 'word'].edge_index = torch.transpose(torch.tensor(tag_word_edge_index, dtype=torch.long) , 0 , 1)
-        data['word', 'word_tag', 'tag'].edge_index = torch.transpose(torch.tensor(word_tag_edge_index, dtype=torch.long) , 0 , 1)
-        data['word', 'seq', 'word'].edge_index = torch.transpose(torch.tensor(word_word_edge_index, dtype=torch.long) , 0 , 1)
+        data['tag', 'tag_word', 'word'].edge_index = torch.transpose(torch.tensor(tag_word_edge_index, dtype=torch.int32) , 0 , 1)
+        data['word', 'word_tag', 'tag'].edge_index = torch.transpose(torch.tensor(word_tag_edge_index, dtype=torch.int32) , 0 , 1)
+        data['word', 'seq', 'word'].edge_index = torch.transpose(torch.tensor(word_word_edge_index, dtype=torch.int32) , 0 , 1)
         data['tag', 'tag_word', 'word'].edge_attr = tag_word_edge_attr
         data['word', 'word_tag', 'tag'].edge_attr = word_tag_edge_attr
         data['word', 'seq', 'word'].edge_attr = word_word_edge_attr
         return data
     def draw_graph(self , idx : int):
-        node_tokens = []
-        doc = self.nlp(self.raw_data[idx])
-        for d in self.tags:
-            node_tokens.append(d)
-        for t in doc:
-            node_tokens.append(t.lemma_)
-        graph_data = self.get_graph(idx)
-        g = to_networkx(graph_data)
-        layout = nx.spring_layout(g)
-        nx.draw(g, pos=layout)
-        words_dict = {i: node_tokens[i] for i in range(len(node_tokens))}
-        # edge_labels_dict = {(graph_data.edge_index[0][i].item() , graph_data.edge_index[1][i].item()) : { "dep" : graph_data.edge_attr[i]} for i in range(len(graph_data.edge_attr))}
-        # nx.set_edge_attributes(g , edge_labels_dict)
-        nx.draw_networkx_labels(g, pos=layout, labels=words_dict)
-        # nx.draw_networkx_edge_labels(g, pos=layout)
+        # define it if needed later
+        pass
     def to_graph_indexed(self, text: str):
         doc = self.nlp(text)
         if len(doc) < 2:
