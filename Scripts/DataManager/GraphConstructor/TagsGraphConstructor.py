@@ -76,7 +76,8 @@ class TagsGraphConstructor(GraphConstructor):
         return -1 # means not found
     
     def __build_initial_tag_vectors(self , tags_length : int):
-        return torch.zeros((tags_length, self.nlp.vocab.vectors_length), dtype=torch.float32)  
+        # return torch.zeros((tags_length, self.nlp.vocab.vectors_length), dtype=torch.float32)  
+        return torch.nn.functional.one_hot(torch.arange(0, tags_length), num_classes=-1)
     def __create_graph(self , doc , for_compression=False):
         data = HeteroData()
         tags_length = len(self.tags)
