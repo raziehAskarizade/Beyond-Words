@@ -113,7 +113,8 @@ class DependencyGraphConstructor(GraphConstructor):
                 return dep_idx
         return -1 # means not found
     def __build_initial_dependency_vectors(self , dep_length : int):
-        return torch.zeros((dep_length, self.nlp.vocab.vectors_length), dtype=torch.float32)        
+        # return torch.zeros((dep_length, self.nlp.vocab.vectors_length), dtype=torch.float32)
+        return torch.nn.functional.one_hot(torch.arange(0 , dep_length), num_classes=-1)
     def __create_graph_with_node_dependencies(self , doc , for_compression=False):
         # nodes size is dependencies + tokens
         data = HeteroData()
