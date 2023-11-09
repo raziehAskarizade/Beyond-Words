@@ -100,10 +100,11 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         data = self.__create_graph(doc,for_compression,False)
         sentence_embeddings = [sent.vector for sent in doc.sents]
         data['sentence'].x = torch.tensor(sentence_embeddings, dtype=torch.float32)
-        if for_compression:
-            data['general'].x = torch.full((1,),0, dtype=torch.float32)
-        else:
-            data['general'].x = self.__build_initial_general_vector()
+        if self.use_general_node:
+            if for_compression:
+                data['general'].x = torch.full((1,),0, dtype=torch.float32)
+            else:
+                data['general'].x = self.__build_initial_general_vector()
         sentence_general_edge_index = []
         general_sentence_edge_index = []
         sentence_word_edge_index = []
