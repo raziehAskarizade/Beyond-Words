@@ -21,11 +21,11 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
             super(SentenceGraphConstructor._Variables, self).__init__()
             self.nlp_pipeline: str = ''
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='', use_general_node=False , use_compression=True):
+                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='', use_general_node=False , use_compression=True, num_data_load=-1):
 
         super(SentenceGraphConstructor, self)\
             .__init__(texts, save_path, config, lazy_construction, load_preprocessed_data,
-                      naming_prepend , False , use_compression)
+                      naming_prepend , False , use_compression,num_data_load)
         self.settings = {"token_sentence_weight" : 1, "token_token_weight" : 2 , "general_sentence_weight" : 2}
         self.sentence_use_general_node = use_general_node
         self.var.nlp_pipeline = self.config.spacy.pipeline
@@ -40,12 +40,11 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
         sequential_data = super()._create_graph(doc , for_compression) # homogeneous
         data = HeteroData()
         sentence_embeddings = [sent.vector for sent in doc.sents]
+        data['word'].x = sequential_data.x
         if for_compression:
-            data['word'].x = torch.full((len(doc),),-1, dtype=torch.float32)
             if self.sentence_use_general_node:
                 data['general'].x = torch.full((1,),-1, dtype=torch.float32)
         else:
-            data['word'].x = torch.zeros((len(doc) , self.nlp.vocab.vectors_length), dtype=torch.float32)
             if self.sentence_use_general_node:
                 data['general'].x = self._build_initial_general_vector()
         data['sentence'].x = torch.tensor(sentence_embeddings, dtype=torch.float32)
@@ -71,15 +70,15 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
             word_sentence_edge_attr.append(self.settings['token_sentence_weight'])
             word_sentence_edge_attr.append(self.settings['token_sentence_weight'])
         if self.sentence_use_general_node:
-            data['general' , 'general_sentence' , 'sentence'].edge_index = torch.transpose(torch.tensor(general_sentence_edge_index, dtype=torch.long) , 0 , 1)
-            data['sentence' , 'sentence_general' , 'general'].edge_index = torch.transpose(torch.tensor(sentence_general_edge_index, dtype=torch.long) , 0 , 1)
-            data['general' , 'general_sentence' , 'sentence'].edge_attr = general_sentence_edge_attr
-            data['sentence' , 'sentence_general' , 'general'].edge_attr = sentence_general_edge_attr
-        data['word' , 'word_sentence' , 'sentence'].edge_index = torch.transpose(torch.tensor(sentence_word_edge_index, dtype=torch.long) , 0 , 1)
-        data['sentence' , 'sentence_word' , 'word'].edge_index = torch.transpose(torch.tensor(word_sentence_edge_index, dtype=torch.long) , 0 , 1)
+            data['general' , 'general_sentence' , 'sentence'].edge_index = torch.transpose(torch.tensor(general_sentence_edge_index, dtype=torch.int32) , 0 , 1)
+            data['sentence' , 'sentence_general' , 'general'].edge_index = torch.transpose(torch.tensor(sentence_general_edge_index, dtype=torch.int32) , 0 , 1)
+            data['general' , 'general_sentence' , 'sentence'].edge_attr = torch.nn.functional.normalize(torch.tensor(general_sentence_edge_attr, dtype=torch.float32), dim=0)
+            data['sentence' , 'sentence_general' , 'general'].edge_attr = torch.nn.functional.normalize(torch.tensor(sentence_general_edge_attr, dtype=torch.float32), dim=0)
+        data['word' , 'word_sentence' , 'sentence'].edge_index = torch.transpose(torch.tensor(sentence_word_edge_index, dtype=torch.int32) , 0 , 1)
+        data['sentence' , 'sentence_word' , 'word'].edge_index = torch.transpose(torch.tensor(word_sentence_edge_index, dtype=torch.int32) , 0 , 1)
         data['word' , 'seq' , 'word'].edge_index = sequential_data.edge_index
-        data['word' , 'word_sentence' , 'sentence'].edge_attr = word_sentence_edge_attr
-        data['sentence' , 'sentence_word' , 'word'].edge_attr = sentence_word_edge_attr
+        data['word' , 'word_sentence' , 'sentence'].edge_attr = torch.nn.functional.normalize(torch.tensor(word_sentence_edge_attr, dtype=torch.float32), dim=0)
+        data['sentence' , 'sentence_word' , 'word'].edge_attr = torch.nn.functional.normalize(torch.tensor(sentence_word_edge_attr, dtype=torch.float32), dim=0)
         data['word' , 'seq' , 'word'].edge_attr = sequential_data.edge_attr
         return data
                     
@@ -93,8 +92,6 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
         for i in range(len(graph['word'].x)):
             if graph['word'].x[i] in self.nlp.vocab.vectors:
                 words[i] = torch.tensor(self.nlp.vocab.vectors[graph['word'].x[i]])
-            else:
-                words[i] = torch.zeros((self.nlp.vocab.vectors_length) , dtype=torch.float32)
         graph['word'].x = words
         if self.sentence_use_general_node:
             graph['general'].x = super()._build_initial_general_vector()
