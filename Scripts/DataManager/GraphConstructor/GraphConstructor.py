@@ -181,3 +181,5 @@ class GraphConstructor(ABC):
     def load_data_compressed(self , idx: int):
         basic_graph = torch.load(path.join(self.save_path, f'{self.var.graphs_name[idx]}_compressed.pt'))
         self._graphs[idx] = self.prepare_loaded_data(basic_graph)
+        
+    

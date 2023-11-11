@@ -162,28 +162,52 @@ class SequentialGraphConstructor(GraphConstructor):
                     words[i] = torch.tensor(self.nlp.vocab.vectors[graph['word'].x[i]])
             graph['word'].x = words
             graph['general'].x = self.__build_initial_general_vector(num=self.num_general_nodes)
-            if self.num_general_nodes > 1:
-                # connecting other general nodes
-                word_general_edge_index = torch.transpose(torch.tensor(data['general' , 'general_word' , 'word'].edge_index, dtype=torch.int32) , 0 , 1).tolist()
-                general_word_edge_index = torch.transpose(torch.tensor(data['word' , 'word_general' , 'general'].edge_index, dtype=torch.int32) , 0 , 1).tolist()
-                general_word_edge_attr = data['general' , 'general_word' , 'word'].edge_index.tolist()
-                word_general_edge_attr = data['word' , 'word_general' , 'general'].edge_index.tolist()
-                for i in range(len(graph['word'].x)):
-                    for j in range(1,num_general_nodes):
-                        word_general_edge_index.append([i , j])
-                        general_word_edge_index.append([j , i])
-                        word_general_edge_attr.append(self.settings["general_tokens_weight"])
-                        general_word_edge_attr.append(self.settings["general_tokens_weight"])
-                data['general' , 'general_word' , 'word'].edge_index = torch.transpose(torch.tensor(general_word_edge_index, dtype=torch.int32) , 0 , 1)
-                data['word' , 'word_general' , 'general'].edge_index = torch.transpose(torch.tensor(word_general_edge_index, dtype=torch.int32) , 0 , 1)
-                data['general' , 'general_word' , 'word'].edge_attr = torch.nn.functional.normalize(torch.tensor(general_word_edge_attr, dtype=torch.float32), dim=0)
-                data['word' , 'word_general' , 'general'].edge_attr = torch.nn.functional.normalize(torch.tensor(word_general_edge_attr, dtype=torch.float32), dim=0)
+            graph = self.__add_multiple_general_nodes(graph,False , self.num_general_nodes)
         else:
             words = torch.zeros((len(graph.x) , self.nlp.vocab.vectors_length), dtype=torch.float32)
             for i in range(len(graph.x)):
                 if graph.x[i] in self.nlp.vocab.vectors:
                     words[i] = torch.tensor(self.nlp.vocab.vectors[graph.x[i]])
             graph.x = words
+        return graph
+    
+    def _add_multiple_general_nodes(self,graph , use_sentence_nodes, num_general_nodes):
+        if not use_sentence_nodes:
+            graph['general'].x = self.__build_initial_general_vector(num=self.num_general_nodes)
+            if self.num_general_nodes > 1:
+                # connecting other general nodes
+                word_general_edge_index = torch.transpose(torch.tensor(graph['general' , 'general_word' , 'word'].edge_index, dtype=torch.int32) , 0 , 1).tolist()
+                general_word_edge_index = torch.transpose(torch.tensor(graph['word' , 'word_general' , 'general'].edge_index, dtype=torch.int32) , 0 , 1).tolist()
+                general_word_edge_attr = graph['general' , 'general_word' , 'word'].edge_attr.tolist()
+                word_general_edge_attr = graph['word' , 'word_general' , 'general'].edge_attr.tolist()
+                for i in range(len(graph['word'].x)):
+                    for j in range(1,num_general_nodes):
+                        word_general_edge_index.append([i , j])
+                        general_word_edge_index.append([j , i])
+                        word_general_edge_attr.append(self.settings["general_token_weight"])
+                        general_word_edge_attr.append(self.settings["general_token_weight"])
+                graph['general' , 'general_word' , 'word'].edge_index = torch.transpose(torch.tensor(general_word_edge_index, dtype=torch.int32) , 0 , 1)
+                graph['word' , 'word_general' , 'general'].edge_index = torch.transpose(torch.tensor(word_general_edge_index, dtype=torch.int32) , 0 , 1)
+                graph['general' , 'general_word' , 'word'].edge_attr = torch.nn.functional.normalize(torch.tensor(general_word_edge_attr, dtype=torch.float32), dim=0)
+                graph['word' , 'word_general' , 'general'].edge_attr = torch.nn.functional.normalize(torch.tensor(word_general_edge_attr, dtype=torch.float32), dim=0)
+        else:
+            graph['general'].x = self.__build_initial_general_vector(num=self.num_general_nodes)
+            if self.num_general_nodes > 1:
+                # connecting other general nodes
+                sentence_general_edge_index = torch.transpose(torch.tensor(graph['general' , 'general_sentence' , 'sentence'].edge_index, dtype=torch.int32) , 0 , 1).tolist()
+                general_sentence_edge_index = torch.transpose(torch.tensor(graph['sentence' , 'sentence_general' , 'general'].edge_index, dtype=torch.int32) , 0 , 1).tolist()
+                general_sentence_edge_attr = graph['general' , 'general_sentence' , 'sentence'].edge_attr.tolist()
+                sentence_general_edge_attr = graph['sentence' , 'word_general' , 'general'].edge_attr.tolist()
+                for i in range(len(graph['sentence'].x)):
+                    for j in range(1,num_general_nodes):
+                        word_general_edge_index.append([i , j])
+                        general_word_edge_index.append([j , i])
+                        word_general_edge_attr.append(self.settings["general_sentence_weight"])
+                        general_word_edge_attr.append(self.settings["general_sentence_weight"])
+                graph['general' , 'general_sentence' , 'sentence'].edge_index = torch.transpose(torch.tensor(general_sentence_edge_index, dtype=torch.int32) , 0 , 1)
+                graph['sentence' , 'sentence_general' , 'general'].edge_index = torch.transpose(torch.tensor(sentence_general_edge_index, dtype=torch.int32) , 0 , 1)
+                graph['general' , 'general_sentence' , 'sentence'].edge_attr = torch.nn.functional.normalize(torch.tensor(general_sentence_edge_attr, dtype=torch.float32), dim=0)
+                graph['sentence' , 'sentence_general' , 'general'].edge_attr = torch.nn.functional.normalize(torch.tensor(sentence_general_edge_attr, dtype=torch.float32), dim=0)
         return graph
         
 
