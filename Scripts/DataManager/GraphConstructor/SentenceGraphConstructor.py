@@ -96,9 +96,8 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
             if graph['word'].x[i] in self.nlp.vocab.vectors:
                 words[i] = torch.tensor(self.nlp.vocab.vectors[graph['word'].x[i]])
         graph['word'].x = words
-        graph = self.
         if self.use_general_node:
-            graph = super._add_multiple_general_nodes(graph , True , self.num_data_load)
+            graph = self._add_multiple_general_nodes(graph , True , self.num_general_nodes)
         return graph
     
 
