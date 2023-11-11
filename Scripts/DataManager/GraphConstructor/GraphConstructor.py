@@ -8,13 +8,13 @@ import numpy as np
 import torch
 from torch_geometric.data import Data
 from typing import Tuple, Any, List, Dict
-
+from torch_geometric.data import HeteroData
 from torch_geometric.utils import to_networkx
 
 from Scripts.Configs.ConfigClass import Config
 from enum import Enum
 from flags import Flags
-
+from Scripts.Utils.GraphUtilities import reweight_hetero_graph
 
 class TextGraphType(Flags):
     CO_OCCURRENCE = 1
@@ -181,5 +181,18 @@ class GraphConstructor(ABC):
     def load_data_compressed(self , idx: int):
         basic_graph = torch.load(path.join(self.save_path, f'{self.var.graphs_name[idx]}_compressed.pt'))
         self._graphs[idx] = self.prepare_loaded_data(basic_graph)
+    def reweight(self, idx : int , triplet : tuple , weight):
+        is_available = isinstance(self._graphs[idx] , HeteroData)
+        if is_available:
+            return reweight_hetero_graph(self._graphs[idx] , triplet , weight)
+        else:
+            return None
+        
+    def reweight_all(self , triplet : tuple , weight):
+        for i in range(len(self._graphs)):
+            self._graphs[i] = self.reweight(i , triplet , weight)
+        
+            
+            
         
     

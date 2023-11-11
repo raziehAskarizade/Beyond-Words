@@ -22,7 +22,9 @@ from Scripts.DataManager.Datasets.GraphConstructorDataset import GraphConstructo
 
 class AmazonReviewGraphDataModule(GraphDataModule):
 
-    def __init__(self, config: Config, has_val: bool, has_test: bool, test_size=0.2, val_size=0.2, num_workers=2, drop_last=True, train_data_path='', test_data_path='', graphs_path='', batch_size = 32, device='cpu', shuffle = False, num_data_load=-1, graph_type: TextGraphType = TextGraphType.FULL, load_preprocessed_data = True, *args, **kwargs):
+    def __init__(self, config: Config, has_val: bool, has_test: bool, test_size=0.2, val_size=0.2, num_workers=2, drop_last=True, train_data_path='', test_data_path='', graphs_path='', batch_size = 32, device='cpu', shuffle = False, num_data_load=-1, graph_type: TextGraphType = TextGraphType.FULL, load_preprocessed_data = True, reweights=[], *args, **kwargs):
+        # Sample reweight [None,None,None,None,(("word" , "seq" , "word") , 5)]
+        # 5 is weight in above code
         
         super(AmazonReviewGraphDataModule, self)\
             .__init__(config, device, has_val, has_test, test_size, val_size, *args, **kwargs)
@@ -32,6 +34,7 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         self.num_workers = num_workers
         self.drop_last = drop_last
         self.graph_type = graph_type
+        self.reweights = reweights
         self.graphs_path = graphs_path if graphs_path!='' else 'data/GraphData/AmazonReview'
         self.train_data_path = 'data/Amazon-Review/train_sm.csv' if train_data_path == '' else train_data_path
         self.test_data_path = 'data/Amazon-Review/test_sm.csv' if test_data_path == '' else test_data_path
@@ -71,7 +74,8 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         for key in self.graph_constructors:
             self.graph_constructors[key].setup(load_preprocessed_data)
             self.dataset[key] = GraphConstructorDataset(self.graph_constructors[key], self.labels)
-            
+            # reweighting
+            self.graph_constructors[key].reweight_all(self.reweights[key][0] , self.reweights[key][1])
             self.__train_dataset[key], self.__val_dataset[key], self.__test_dataset[key] =\
                 random_split(self.dataset[key], [1-self.val_size-self.test_size, self.val_size, self.test_size])
             
@@ -110,7 +114,6 @@ class AmazonReviewGraphDataModule(GraphDataModule):
     def __set_graph_constructors(self, graph_type: TextGraphType):
         graph_type = copy(graph_type)
         graph_constructors: Dict[TextGraphType, GraphConstructor] = {}
-        
         if TextGraphType.CO_OCCURRENCE in graph_type:
             graph_constructors[TextGraphType.CO_OCCURRENCE] = self.__get_co_occurrence_graph()
             graph_type = graph_type - TextGraphType.CO_OCCURRENCE

@@ -75,13 +75,13 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
         if self.use_general_node:
             data['general' , 'general_sentence' , 'sentence'].edge_index = torch.transpose(torch.tensor(general_sentence_edge_index, dtype=torch.int32) , 0 , 1)
             data['sentence' , 'sentence_general' , 'general'].edge_index = torch.transpose(torch.tensor(sentence_general_edge_index, dtype=torch.int32) , 0 , 1)
-            data['general' , 'general_sentence' , 'sentence'].edge_attr = torch.nn.functional.normalize(torch.tensor(general_sentence_edge_attr, dtype=torch.float32), dim=0)
-            data['sentence' , 'sentence_general' , 'general'].edge_attr = torch.nn.functional.normalize(torch.tensor(sentence_general_edge_attr, dtype=torch.float32), dim=0)
+            data['general' , 'general_sentence' , 'sentence'].edge_attr = torch.tensor(general_sentence_edge_attr, dtype=torch.float32)
+            data['sentence' , 'sentence_general' , 'general'].edge_attr = torch.tensor(sentence_general_edge_attr, dtype=torch.float32)
         data['word' , 'word_sentence' , 'sentence'].edge_index = torch.transpose(torch.tensor(word_sentence_edge_index, dtype=torch.int32) , 0 , 1)
         data['sentence' , 'sentence_word' , 'word'].edge_index = torch.transpose(torch.tensor(sentence_word_edge_index, dtype=torch.int32) , 0 , 1)
         data['word' , 'seq' , 'word'].edge_index = sequential_data.edge_index
-        data['word' , 'word_sentence' , 'sentence'].edge_attr = torch.nn.functional.normalize(torch.tensor(word_sentence_edge_attr, dtype=torch.float32), dim=0)
-        data['sentence' , 'sentence_word' , 'word'].edge_attr = torch.nn.functional.normalize(torch.tensor(sentence_word_edge_attr, dtype=torch.float32), dim=0)
+        data['word' , 'word_sentence' , 'sentence'].edge_attr = torch.tensor(word_sentence_edge_attr, dtype=torch.float32)
+        data['sentence' , 'sentence_word' , 'word'].edge_attr = torch.tensor(sentence_word_edge_attr, dtype=torch.float32)
         data['word' , 'seq' , 'word'].edge_attr = sequential_data.edge_attr
         return data
                     

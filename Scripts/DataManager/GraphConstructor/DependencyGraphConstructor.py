@@ -104,7 +104,7 @@ class DependencyGraphConstructor(GraphConstructor):
         # self.node_attr = node_attr
         edge_index = torch.transpose(torch.tensor(edge_index, dtype=torch.int32) , 0 , 1)
         # self.edge_attr = edge_attr # vectorized edge attributes
-        edge_attr = torch.nn.functional.normalize(torch.tensor(edge_attr, dtype=torch.float32), dim=0)
+        edge_attr = torch.tensor(edge_attr, dtype=torch.float32)
         return Data(x=node_attr, edge_index=edge_index,edge_attr=edge_attr)
     
     def __find_dep_index(self , dependency : str):
@@ -161,9 +161,9 @@ class DependencyGraphConstructor(GraphConstructor):
         data['dep' , 'dep_word' , 'word'].edge_index = torch.transpose(torch.tensor(dep_word_edge_index, dtype=torch.int32) , 0 , 1)
         data['word' , 'word_dep' , 'dep'].edge_index = torch.transpose(torch.tensor(word_dep_edge_index, dtype=torch.int32) , 0 , 1)
         data['word' , 'seq' , 'word'].edge_index = torch.transpose(torch.tensor(word_word_edge_index, dtype=torch.int32) , 0 , 1)
-        data['dep' , 'dep_word' , 'word'].edge_attr = torch.nn.functional.normalize(torch.tensor(dep_word_edge_attr, dtype=torch.float32), dim=0)
-        data['word' , 'word_dep' , 'dep'].edge_attr = torch.nn.functional.normalize(torch.tensor(word_dep_edge_attr, dtype=torch.float32), dim=0)
-        data['word' , 'seq' , 'word'].edge_attr = torch.nn.functional.normalize(torch.tensor(word_word_edge_attr, dtype=torch.float32), dim=0)
+        data['dep' , 'dep_word' , 'word'].edge_attr = torch.tensor(dep_word_edge_attr, dtype=torch.float32)
+        data['word' , 'word_dep' , 'dep'].edge_attr = torch.tensor(word_dep_edge_attr, dtype=torch.float32)
+        data['word' , 'seq' , 'word'].edge_attr = torch.tensor(word_word_edge_attr, dtype=torch.float32)
         return data
     def draw_graph(self , idx : int):
         # do it later if needed

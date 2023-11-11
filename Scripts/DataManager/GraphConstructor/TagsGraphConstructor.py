@@ -122,9 +122,9 @@ class TagsGraphConstructor(GraphConstructor):
         data['tag', 'tag_word', 'word'].edge_index = torch.transpose(torch.tensor(tag_word_edge_index, dtype=torch.int32) , 0 , 1)
         data['word', 'word_tag', 'tag'].edge_index = torch.transpose(torch.tensor(word_tag_edge_index, dtype=torch.int32) , 0 , 1)
         data['word', 'seq', 'word'].edge_index = torch.transpose(torch.tensor(word_word_edge_index, dtype=torch.int32) , 0 , 1)
-        data['tag', 'tag_word', 'word'].edge_attr = torch.nn.functional.normalize(torch.tensor(tag_word_edge_attr, dtype=torch.float32), dim=0)
-        data['word', 'word_tag', 'tag'].edge_attr = torch.nn.functional.normalize(torch.tensor(word_tag_edge_attr, dtype=torch.float32), dim=0)
-        data['word', 'seq', 'word'].edge_attr = torch.nn.functional.normalize(torch.tensor(word_word_edge_attr, dtype=torch.float32), dim=0)
+        data['tag', 'tag_word', 'word'].edge_attr = torch.tensor(tag_word_edge_attr, dtype=torch.float32)
+        data['word', 'word_tag', 'tag'].edge_attr = torch.tensor(word_tag_edge_attr, dtype=torch.float32)
+        data['word', 'seq', 'word'].edge_attr = torch.tensor(word_word_edge_attr, dtype=torch.float32)
         return data
     def draw_graph(self , idx : int):
         # define it if needed later
