@@ -1,17 +1,9 @@
 
-import pickle
-from typing import List, Dict, Tuple
-
-import networkx as nx
-import pandas as pd
-from torch_geometric.utils import to_networkx
-
 from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor
-from torch_geometric.data import Data , HeteroData
+from torch_geometric.data import HeteroData
 from Scripts.Configs.ConfigClass import Config
 import spacy
 import torch
-import numpy as np
 import os
 
 
