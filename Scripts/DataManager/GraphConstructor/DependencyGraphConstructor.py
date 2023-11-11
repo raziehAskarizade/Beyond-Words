@@ -114,11 +114,13 @@ class DependencyGraphConstructor(GraphConstructor):
         return -1 # means not found
     def __build_initial_dependency_vectors(self , dep_length : int):
         # return torch.zeros((dep_length, self.nlp.vocab.vectors_length), dtype=torch.float32)
-        return torch.nn.functional.one_hot(torch.arange(0 , dep_length), num_classes=-1)
+        # return torch.nn.functional.one_hot(torch.arange(0 , dep_length), num_classes=-1)
+        return torch.arange(0 , dep_length)
     def __create_graph_with_node_dependencies(self , doc , for_compression=False):
         # nodes size is dependencies + tokens
         data = HeteroData()
         dep_length = len(self.dependencies)
+        data['dep'].length = dep_length
         if for_compression:
             data['dep'].x = torch.full((dep_length,),-1, dtype=torch.float32)
             data['word'].x = [-1 for i in range(len(doc))]
@@ -175,7 +177,7 @@ class DependencyGraphConstructor(GraphConstructor):
         else:
             return self.__create_graph(doc, for_compression=True)
 
-    def convert_indexed_nodes_to_vector_nodes(self, graph):
+    def prepare_loaded_data(self, graph):
         if self.use_node_dependencies:
             words = torch.zeros((len(graph['word'].x) , self.nlp.vocab.vectors_length), dtype=torch.float32)
             for i in range(len(graph['word'].x)):
