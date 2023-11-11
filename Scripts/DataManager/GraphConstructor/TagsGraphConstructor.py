@@ -77,10 +77,12 @@ class TagsGraphConstructor(GraphConstructor):
     
     def __build_initial_tag_vectors(self , tags_length : int):
         # return torch.zeros((tags_length, self.nlp.vocab.vectors_length), dtype=torch.float32)  
-        return torch.nn.functional.one_hot(torch.arange(0, tags_length), num_classes=-1)
+        # return torch.nn.functional.one_hot(torch.arange(0, tags_length), num_classes=-1)
+        return torch.arange(0, tags_length)
     def __create_graph(self , doc , for_compression=False):
         data = HeteroData()
         tags_length = len(self.tags)
+        data['tag'].length = tags_length
         if for_compression:
             data['word'].x = [-1 for i in range(len(doc))]
             data['tag'].x = torch.full((tags_length,), -1, dtype=torch.float32)

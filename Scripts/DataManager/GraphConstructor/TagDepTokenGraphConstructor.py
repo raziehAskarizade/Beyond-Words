@@ -76,7 +76,8 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         return -1 # means not found
     def __build_initial_dependency_vectors(self , dep_length : int):
         # return torch.zeros((dep_length, self.nlp.vocab.vectors_length), dtype=torch.float32)
-        return torch.nn.functional.one_hot(torch.arange(0, dep_length), num_classes=-1).to(torch.float32)
+        # return torch.nn.functional.one_hot(torch.arange(0, dep_length), num_classes=-1).to(torch.float32)
+        return torch.arange(0 , dep_length)
     def __find_tag_index(self , tag : str):
         for tag_idx in range(len(self.tags)):
             if self.tags[tag_idx] == tag:
@@ -85,7 +86,8 @@ class TagDepTokenGraphConstructor(GraphConstructor):
     
     def __build_initial_tag_vectors(self , tags_length : int):
         # return torch.zeros((tags_length, self.nlp.vocab.vectors_length), dtype=torch.float32)
-        return torch.nn.functional.one_hot(torch.arange(0, tags_length), num_classes=-1).to(torch.float32)
+        # return torch.nn.functional.one_hot(torch.arange(0, tags_length), num_classes=-1).to(torch.float32)
+        return torch.arange(0, tags_length)
     
     def __build_initial_general_vector(self):
         return torch.zeros((1 , self.nlp.vocab.vectors_length), dtype=torch.float32)   
@@ -139,6 +141,8 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         data = HeteroData()
         dep_length = len(self.dependencies)
         tag_length = len(self.tags)
+        data['dep'].length = dep_length
+        data['tag'].length = tag_length
         if for_compression:
             data['dep'].x = torch.full((dep_length,), -1, dtype=torch.float32)
             data['word'].x = [-1 for i in range(len(doc))]
