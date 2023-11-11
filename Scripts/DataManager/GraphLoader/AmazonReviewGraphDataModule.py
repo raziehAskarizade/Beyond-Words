@@ -73,9 +73,9 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         self.__train_dataloader, self.__test_dataloader, self.__val_dataloader = {}, {}, {}
         for key in self.graph_constructors:
             self.graph_constructors[key].setup(load_preprocessed_data)
-            self.dataset[key] = GraphConstructorDataset(self.graph_constructors[key], self.labels)
             # reweighting
             self.graph_constructors[key].reweight_all(self.reweights[key][0] , self.reweights[key][1])
+            self.dataset[key] = GraphConstructorDataset(self.graph_constructors[key], self.labels)
             self.__train_dataset[key], self.__val_dataset[key], self.__test_dataset[key] =\
                 random_split(self.dataset[key], [1-self.val_size-self.test_size, self.val_size, self.test_size])
             
