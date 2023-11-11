@@ -22,6 +22,10 @@ class BaseLightningModel(L.LightningModule):
     def forward(self, data_batch, *args, **kwargs):
         return self.model(data_batch)
 
+    def on_train_epoch_start(self) -> None:
+        current_learning_rate = float(next(iter(self.optimizer.param_groups))['lr'])
+        self.log('lr', current_learning_rate, batch_size=self.batch_size, on_epoch=True, on_step=False)
+    
     def training_step(self, data_batch, *args, **kwargs):
         data, labels = data_batch
         data = data.to(self.device)
@@ -67,7 +71,7 @@ class BaseLightningModel(L.LightningModule):
         return optimizer if optimizer is not None else torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
     
     def _get_lr_scheduler(self, lr_scheduler):
-        return lr_scheduler if lr_scheduler is not None else torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=5, factor=0.1, mode='min')
+        return lr_scheduler if lr_scheduler is not None else torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=5, factor=0.2, mode='min')
             
 
         # return [optimier], [lr_scheduler]

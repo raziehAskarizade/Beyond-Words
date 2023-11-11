@@ -11,7 +11,6 @@ from torch_geometric.data import Data
 # from torch_geometric.data.lightning.datamodule import LightningDataModule
 
 from Scripts.Configs.ConfigClass import Config
-from Scripts.Utils.GraphCollection.GraphCollection import GraphCollection
 
 
 class GraphDataModule(LightningDataModule):
@@ -141,7 +140,7 @@ class HomogeneousGraphLoader(GraphDataModule):
 
 class CollectionGraphLoader(GraphDataModule):
 
-    def __init__(self, graphs: GraphCollection, device, test_size=0.2, val_size=0.15, *args, **kwargs):
+    def __init__(self, graphs, device, test_size=0.2, val_size=0.15, *args, **kwargs):
         super(CollectionGraphLoader, self).__init__(device, test_size, val_size, *args, **kwargs)
         self.graphs = graphs
 
