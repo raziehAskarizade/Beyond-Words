@@ -23,8 +23,10 @@ class BaseLightningModel(L.LightningModule):
         return self.model(data_batch)
 
     def on_train_epoch_start(self) -> None:
-        current_learning_rate = float(next(iter(self.optimizer.param_groups))['lr'])
-        self.log('lr', current_learning_rate, batch_size=self.batch_size, on_epoch=True, on_step=False)
+        param_groups = next(iter(self.optimizer.param_groups))
+        if 'lr' in param_groups and param_groups['lr'] is not None:
+            current_learning_rate = float(param_groups['lr'])
+            self.log('lr', current_learning_rate, batch_size=self.batch_size, on_epoch=True, on_step=False)
     
     def training_step(self, data_batch, *args, **kwargs):
         data, labels = data_batch

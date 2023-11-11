@@ -26,7 +26,7 @@ class ClassifierModelManager(ModelManager):
     def _create_callbacks(self) -> List[Callback]:
         return [
             ModelCheckpoint(save_top_k=2, mode='max', monitor='val_acc', save_last=True),
-            EarlyStopping(patience=50, mode='max', monitor='val_acc')
+            # EarlyStopping(patience=50, mode='max', monitor='val_acc')
         ]
 
     def draw_summary(self, dataloader):
