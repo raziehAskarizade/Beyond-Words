@@ -77,7 +77,7 @@ class GraphConstructor(ABC):
 
     # below method gets graph loaded from indexed files and gives complete graph
     @abstractmethod
-    def convert_indexed_nodes_to_vector_nodes(self , graph):
+    def prepare_loaded_data(self , graph):
         pass
 
     def get_graph(self, idx: int):
@@ -165,11 +165,11 @@ class GraphConstructor(ABC):
         for i in range(self.var.graph_num):
             if i % 100 == 0 : 
                 print(f'data loading {i}')
-            self._graphs[i] = self.convert_indexed_nodes_to_vector_nodes(torch.load(path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt')))
+            self._graphs[i] = self.prepare_loaded_data(torch.load(path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt')))
 
     def load_data_range(self, start: int, end: int):
         for i in range(start, end):
-            self._graphs[i] = self.convert_indexed_nodes_to_vector_nodes(torch.load(path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt')))
+            self._graphs[i] = self.prepare_loaded_data(torch.load(path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt')))
 
     def save_data_compressed(self , idx: int):
         graph = self.to_graph_indexed(self.raw_data[idx])
@@ -180,4 +180,4 @@ class GraphConstructor(ABC):
 
     def load_data_compressed(self , idx: int):
         basic_graph = torch.load(path.join(self.save_path, f'{self.var.graphs_name[idx]}_compressed.pt'))
-        self._graphs[idx] = self.convert_indexed_nodes_to_vector_nodes(basic_graph)
+        self._graphs[idx] = self.prepare_loaded_data(basic_graph)

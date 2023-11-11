@@ -15,7 +15,7 @@ class TagDepTokenGraphConstructor(GraphConstructor):
             super(TagDepTokenGraphConstructor._Variables, self).__init__()
             self.nlp_pipeline: str = ''
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='' , use_compression=True, use_sentence_nodes=False, use_general_node=True, num_data_load=-1):
+                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='' , use_compression=True, use_sentence_nodes=False, use_general_node=True, num_data_load=-1,num_general_nodes = 1):
 
         super(TagDepTokenGraphConstructor, self)\
             .__init__(texts, self._Variables(), save_path, config, lazy_construction, load_preprocessed_data, naming_prepend , use_compression, num_data_load)
@@ -27,6 +27,7 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         self.nlp = spacy.load(self.var.nlp_pipeline)
         self.dependencies = self.nlp.get_pipe("parser").labels
         self.tags = self.nlp.get_pipe("tagger").labels
+        self.num_general_nodes = num_general_nodes
             
     def setup(self, load_preprocessed_data = True):
         self.load_preprocessed_data = True
@@ -89,8 +90,8 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         # return torch.nn.functional.one_hot(torch.arange(0, tags_length), num_classes=-1).to(torch.float32)
         return torch.arange(0, tags_length)
     
-    def __build_initial_general_vector(self):
-        return torch.zeros((1 , self.nlp.vocab.vectors_length), dtype=torch.float32)   
+    def __build_initial_general_vector(self , num : int = 1):
+        return torch.zeros((num , self.nlp.vocab.vectors_length), dtype=torch.float32)   
      
     def __create_graph_with_sentences(self , doc , for_compression=False):
         data = self.__create_graph(doc,for_compression,False)
@@ -232,7 +233,7 @@ class TagDepTokenGraphConstructor(GraphConstructor):
             return self.__create_graph_with_sentences(doc , for_compression=True)
         else:
             return self.__create_graph(doc,for_compression=True,use_general_node=self.use_general_node)
-    def convert_indexed_nodes_to_vector_nodes(self, graph):
+    def prepare_loaded_data(self, graph):
         words = torch.zeros((len(graph['word'].x) , self.nlp.vocab.vectors_length), dtype=torch.float32)
         for i in range(len(graph['word'].x)):
             if graph['word'].x[i] in self.nlp.vocab.vectors:
@@ -240,7 +241,42 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         graph['word'].x = words
         graph['dep'].x = self.__build_initial_dependency_vectors(len(self.dependencies))
         graph['tag'].x = self.__build_initial_tag_vectors(len(self.tags))
-        if self.use_general_node:
-            graph['general'].x = self.__build_initial_general_vector()
-        # sentences are not coded - we dont need to creat them
+        if self.use_general_node and not self.use_sentence_nodes:
+            graph['general'].x = self.__build_initial_general_vector(num=self.num_general_nodes)
+            if self.num_general_nodes > 1:
+                # connecting other general nodes
+                word_general_edge_index = torch.transpose(torch.tensor(data['general' , 'general_word' , 'word'].edge_index, dtype=torch.int32) , 0 , 1).tolist()
+                general_word_edge_index = torch.transpose(torch.tensor(data['word' , 'word_general' , 'general'].edge_index, dtype=torch.int32) , 0 , 1).tolist()
+                general_word_edge_attr = data['general' , 'general_word' , 'word'].edge_index.tolist()
+                word_general_edge_attr = data['word' , 'word_general' , 'general'].edge_index.tolist()
+                for i in range(len(graph['word'].x)):
+                    for j in range(1,num_general_nodes):
+                        word_general_edge_index.append([i , j])
+                        general_word_edge_index.append([j , i])
+                        word_general_edge_attr.append(self.settings["general_token_weight"])
+                        general_word_edge_attr.append(self.settings["general_token_weight"])
+                data['general' , 'general_word' , 'word'].edge_index = torch.transpose(torch.tensor(general_word_edge_index, dtype=torch.int32) , 0 , 1)
+                data['word' , 'word_general' , 'general'].edge_index = torch.transpose(torch.tensor(word_general_edge_index, dtype=torch.int32) , 0 , 1)
+                data['general' , 'general_word' , 'word'].edge_attr = torch.nn.functional.normalize(torch.tensor(general_word_edge_attr, dtype=torch.float32), dim=0)
+                data['word' , 'word_general' , 'general'].edge_attr = torch.nn.functional.normalize(torch.tensor(word_general_edge_attr, dtype=torch.float32), dim=0)
+        if self.use_general_node and self.use_sentence_nodes:
+            graph['general'].x = self.__build_initial_general_vector(num=self.num_general_nodes)
+            if self.num_general_nodes > 1:
+                # connecting other general nodes
+                sentence_general_edge_index = torch.transpose(torch.tensor(data['general' , 'general_sentence' , 'sentence'].edge_index, dtype=torch.int32) , 0 , 1).tolist()
+                general_sentence_edge_index = torch.transpose(torch.tensor(data['sentence' , 'sentence_general' , 'general'].edge_index, dtype=torch.int32) , 0 , 1).tolist()
+                general_sentence_edge_attr = data['general' , 'general_sentence' , 'sentence'].edge_index.tolist()
+                sentence_general_edge_attr = data['sentence' , 'word_general' , 'general'].edge_index.tolist()
+                for i in range(len(graph['sentence'].x)):
+                    for j in range(1,num_general_nodes):
+                        word_general_edge_index.append([i , j])
+                        general_word_edge_index.append([j , i])
+                        word_general_edge_attr.append(self.settings["general_sentence_weight"])
+                        general_word_edge_attr.append(self.settings["general_sentence_weight"])
+                data['general' , 'general_sentence' , 'sentence'].edge_index = torch.transpose(torch.tensor(general_sentence_edge_index, dtype=torch.int32) , 0 , 1)
+                data['sentence' , 'sentence_general' , 'general'].edge_index = torch.transpose(torch.tensor(sentence_general_edge_index, dtype=torch.int32) , 0 , 1)
+                data['general' , 'general_sentence' , 'sentence'].edge_attr = torch.nn.functional.normalize(torch.tensor(general_sentence_edge_attr, dtype=torch.float32), dim=0)
+                data['sentence' , 'sentence_general' , 'general'].edge_attr = torch.nn.functional.normalize(torch.tensor(sentence_general_edge_attr, dtype=torch.float32), dim=0)
+            
+        # sentences are not coded - we dont need to create them
         return graph

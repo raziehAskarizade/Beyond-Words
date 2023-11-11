@@ -143,7 +143,7 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
         co_occurrence_matrix = self.__get_co_occurrence_matrix(doc, unique_words, unique_map)
         return self.__create_graph(unique_word_ids, co_occurrence_matrix)
     
-    def convert_indexed_nodes_to_vector_nodes(self, graph):
+    def prepare_loaded_data(self, graph):
         nodes = torch.zeros((len(graph.x), self.nlp.vocab.vectors_length), dtype=torch.float32)
         for i in range(len(graph.x)):
             if graph.x[i] in self.nlp.vocab.vectors:

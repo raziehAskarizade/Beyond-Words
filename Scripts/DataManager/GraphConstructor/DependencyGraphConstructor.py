@@ -177,7 +177,7 @@ class DependencyGraphConstructor(GraphConstructor):
         else:
             return self.__create_graph(doc, for_compression=True)
 
-    def convert_indexed_nodes_to_vector_nodes(self, graph):
+    def prepare_loaded_data(self, graph):
         if self.use_node_dependencies:
             words = torch.zeros((len(graph['word'].x) , self.nlp.vocab.vectors_length), dtype=torch.float32)
             for i in range(len(graph['word'].x)):
