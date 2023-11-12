@@ -20,13 +20,12 @@ class ClassifierModelManager(ModelManager):
                  log_name: str = 'model_logs',
                  device='cpu',
                  num_train_epoch = 100):
-        super(ClassifierModelManager, self).__init__(torch_model, lightning_model, model_save_dir, log_dir,
-                                                     log_name, device, num_train_epoch)
+        super(ClassifierModelManager, self).__init__(torch_model, lightning_model, model_save_dir, log_dir, log_name, device, num_train_epoch)
 
     def _create_callbacks(self) -> List[Callback]:
         return [
             ModelCheckpoint(save_top_k=2, mode='max', monitor='val_acc', save_last=True),
-            EarlyStopping(patience=50, mode='max', monitor='val_acc')
+            # EarlyStopping(patience=50, mode='max', monitor='val_acc')
         ]
 
     def draw_summary(self, dataloader):

@@ -43,6 +43,9 @@ class ModelManager(ABC):
             fig.show()
         self.update_learning_rate(self.tuning_result.suggestion())
         return self.tuning_result.suggestion()
+    
+    def tune2(self, data_manager, lr_list, drop_out_list, weight_decay_list):
+        
 
     def update_learning_rate(self, lr):
         self.lightning_model.update_learning_rate(lr)
