@@ -8,7 +8,7 @@ from abc import abstractmethod
 
 class BaseLightningModel(L.LightningModule):
 
-    def __init__(self, model, optimizer=None, loss_func=None, learning_rate=0.01, batch_size=64, lr_scheduler=None):
+    def __init__(self, model, optimizer=None, loss_func=None, learning_rate=0.01, batch_size=64, lr_scheduler=None, user_lr_scheduler=False):
         super(BaseLightningModel, self).__init__()
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -16,7 +16,7 @@ class BaseLightningModel(L.LightningModule):
         # self.save_hyperparameters(ignore=["model"])
         self.save_hyperparameters("model", logger=False)
         self.optimizer = self._get_optimizer(optimizer)
-        self.lr_scheduler = self._get_lr_scheduler(lr_scheduler)
+        self.lr_scheduler = self._get_lr_scheduler(lr_scheduler) if user_lr_scheduler else None
         self.loss_func = self._get_loss_func(loss_func)
 
     def forward(self, data_batch, *args, **kwargs):
@@ -53,6 +53,8 @@ class BaseLightningModel(L.LightningModule):
         return self(data)
 
     def configure_optimizers(self) -> OptimizerLRScheduler:
+        if self.lr_scheduler is None:
+            return self.optimizer
         
         return {
             "optimizer": self.optimizer,
@@ -94,8 +96,8 @@ class BaseLightningModel(L.LightningModule):
 
 class BinaryLightningModel(BaseLightningModel):
 
-    def __init__(self, model, optimizer=None, loss_func=None, learning_rate=0.01, batch_size=64, lr_scheduler=None):
-        super(BinaryLightningModel, self).__init__(model, optimizer, loss_func, learning_rate, batch_size=batch_size, lr_scheduler=lr_scheduler)
+    def __init__(self, model, optimizer=None, loss_func=None, learning_rate=0.01, batch_size=64, lr_scheduler=None, user_lr_scheduler=False):
+        super(BinaryLightningModel, self).__init__(model, optimizer, loss_func, learning_rate, batch_size=batch_size, lr_scheduler=lr_scheduler, user_lr_scheduler=user_lr_scheduler)
         self.train_acc = torchmetrics.Accuracy(task="binary")
         self.val_acc = torchmetrics.Accuracy(task="binary")
         self.test_acc = torchmetrics.Accuracy(task="binary")
@@ -121,8 +123,8 @@ class BinaryLightningModel(BaseLightningModel):
 
 class MultiClassLightningModel(BaseLightningModel):
 
-    def __init__(self, model, optimizer=None, loss_func=None, lr=0.01, batch_size=64):
-        super(MultiClassLightningModel, self).__init__(model, optimizer, loss_func, lr, batch_size=batch_size)
+    def __init__(self, model, optimizer=None, loss_func=None, lr=0.01, batch_size=64, user_lr_scheduler=False):
+        super(MultiClassLightningModel, self).__init__(model, optimizer, loss_func, lr, batch_size=batch_size, user_lr_scheduler=user_lr_scheduler)
         self.train_acc = torchmetrics.Accuracy(task="multiclass")
         self.val_acc = torchmetrics.Accuracy(task="multiclass")
         self.test_acc = torchmetrics.Accuracy(task="multiclass")
@@ -148,8 +150,8 @@ class MultiClassLightningModel(BaseLightningModel):
 
 class MultiLabelLightningModel(BaseLightningModel):
 
-    def __init__(self, model, optimizer=None, loss_func=None, lr=0.01, batch_size=64):
-        super(MultiLabelLightningModel, self).__init__(model, optimizer, loss_func, lr, batch_size=batch_size)
+    def __init__(self, model, optimizer=None, loss_func=None, lr=0.01, batch_size=64, user_lr_scheduler=False):
+        super(MultiLabelLightningModel, self).__init__(model, optimizer, loss_func, lr, batch_size=batch_size, user_lr_scheduler=user_lr_scheduler)
         self.train_acc = torchmetrics.Accuracy(task="multilabel")
         self.val_acc = torchmetrics.Accuracy(task="multilabel")
         self.test_acc = torchmetrics.Accuracy(task="multilabel")
