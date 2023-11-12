@@ -71,7 +71,7 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
             word_sentence_edge_index.append([token.i, sent_index])
             sentence_word_edge_index.append([sent_index, token.i])
             word_sentence_edge_attr.append(self.settings['token_sentence_weight'])
-            word_sentence_edge_attr.append(self.settings['token_sentence_weight'])
+            sentence_word_edge_attr.append(self.settings['token_sentence_weight'])
         if self.use_general_node:
             data['general' , 'general_sentence' , 'sentence'].edge_index = torch.transpose(torch.tensor(general_sentence_edge_index, dtype=torch.int32) , 0 , 1)
             data['sentence' , 'sentence_general' , 'general'].edge_index = torch.transpose(torch.tensor(sentence_general_edge_index, dtype=torch.int32) , 0 , 1)
@@ -98,6 +98,10 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
         graph['word'].x = words
         if self.use_general_node:
             graph = self._add_multiple_general_nodes(graph , True , self.num_general_nodes)
+        # fixing temporary edge_attr problem. the below code must be deleted after the data correction
+        if graph['word' , 'word_sentence' , 'sentence'].edge_attr.shape[0] == 2 * graph['word' , 'word_sentence' , 'sentence'].edge_index.shape[1]:
+            graph['word' , 'word_sentence' , 'sentence'].edge_attr = torch.full((graph['word' , 'word_sentence' , 'sentence'].edge_index.shape[1],) , self.settings['token_sentence_weight'] , dtype=torch.float32)
+            graph['sentence' , 'sentence_word' , 'word'].edge_attr = torch.full((graph['word' , 'word_sentence' , 'sentence'].edge_index.shape[1],) , self.settings['token_sentence_weight'] , dtype=torch.float32)
         return graph
     
 

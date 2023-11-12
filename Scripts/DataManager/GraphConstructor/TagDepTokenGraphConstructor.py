@@ -125,7 +125,7 @@ class TagDepTokenGraphConstructor(GraphConstructor):
             word_sentence_edge_index.append([token.i , sent_index])
             sentence_word_edge_index.append([sent_index , token.i])
             word_sentence_edge_attr.append(self.settings['token_sentence_weight'])
-            word_sentence_edge_attr.append(self.settings['token_sentence_weight'])
+            sentence_word_edge_attr.append(self.settings['token_sentence_weight'])
         if self.use_general_node:
             data['general' , 'general_sentence' , 'sentence'].edge_index = torch.transpose(torch.tensor(general_sentence_edge_index, dtype=torch.int32) , 0 , 1)
             data['sentence' , 'sentence_general' , 'general'].edge_index = torch.transpose(torch.tensor(sentence_general_edge_index, dtype=torch.int32) , 0 , 1)
@@ -243,8 +243,12 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         graph['tag'].x = self.__build_initial_tag_vectors(len(self.tags))
         if self.use_general_node:
             graph = self._add_multiple_general_nodes(graph , self.use_sentence_nodes , self.num_general_nodes)
-            
+        # temp 
         # sentences are not coded - we dont need to create them
+        # fixing temporary edge_attr problem. the below code must be deleted after the data correction
+        if graph['word' , 'word_sentence' , 'sentence'].edge_attr.shape[0] == 2 * graph['word' , 'word_sentence' , 'sentence'].edge_index.shape[1]:
+            graph['word' , 'word_sentence' , 'sentence'].edge_attr = torch.full((graph['word' , 'word_sentence' , 'sentence'].edge_index.shape[1],) , self.settings['token_sentence_weight'] , dtype=torch.float32)
+            graph['sentence' , 'sentence_word' , 'word'].edge_attr = torch.full((graph['word' , 'word_sentence' , 'sentence'].edge_index.shape[1],) , self.settings['token_sentence_weight'] , dtype=torch.float32)
         return graph
     
     def _add_multiple_general_nodes(self,graph , use_sentence_nodes, num_general_nodes):
