@@ -44,14 +44,11 @@ class ModelManager(ABC):
         self.update_learning_rate(self.tuning_result.suggestion())
         return self.tuning_result.suggestion()
     
-    def tune2(self, data_manager, lr_list, drop_out_list, weight_decay_list):
-        
-
     def update_learning_rate(self, lr):
         self.lightning_model.update_learning_rate(lr)
 
     def fit(self, train_dataloaders=None, val_dataloaders=None, datamodule=None, max_epochs = -1, ckpt_path=None):
-        if ckpt_path!=None and ckpt_path != '':
+        if ckpt_path is not None and ckpt_path != '':
             self.ckpt_path = ckpt_path
         if max_epochs>0:
             self.max_epochs = max_epochs

@@ -20,6 +20,7 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
         def __init__(self):
             super(SentenceGraphConstructor._Variables, self).__init__()
             self.nlp_pipeline: str = ''
+            
     def __init__(self, texts: List[str], save_path: str, config: Config,
                  lazy_construction=True, load_preprocessed_data=False, naming_prepend='', use_general_node=False , use_compression=True, num_data_load=-1 , num_general_nodes=1):
 
@@ -31,11 +32,13 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
         self.var.nlp_pipeline = self.config.spacy.pipeline
         self.var.graph_num = len(self.raw_data)
         self.nlp = spacy.load(self.var.nlp_pipeline)
+        
     def to_graph(self, text: str):
         doc = self.nlp(text)
         if len(doc) < 2:
             return
         return self.__create_sentence_graph(doc)
+    
     def __create_sentence_graph(self , doc , for_compression=False):
         sequential_data = super()._create_graph(doc , for_compression) # homogeneous
         data = HeteroData()
@@ -90,6 +93,7 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
         if len(doc) < 2:
             return
         return self.__create_sentence_graph(doc , for_compression=True)
+    
     def prepare_loaded_data(self, graph):
         words = torch.zeros((len(graph['word'].x) , self.nlp.vocab.vectors_length), dtype=torch.float32)
         for i in range(len(graph['word'].x)):
