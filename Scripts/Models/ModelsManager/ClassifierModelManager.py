@@ -47,3 +47,27 @@ class ClassifierModelManager(ModelManager):
         df_metrics[loss_names].plot(grid=True, legend=True, xlabel='Epoch', ylabel='loss')
         df_metrics[eval_names].plot(grid=True, legend=True, xlabel='Epoch', ylabel='accuracy')
         plt.show()
+
+    def save_plot_csv_logger(self, loss_names=['train_loss', 'val_loss'], eval_names=['train_acc', 'val_acc'], name_prepend: str=""):
+        csv_path = path.join(self.log_dir, self.log_name, f'version_{self.logger.version}', 'metrics.csv')
+        metrics = pd.read_csv(csv_path)
+
+        aggregation_metrics = []
+        agg_col = 'epoch'
+        for i, dfg in metrics.groupby(agg_col):
+            agg = dict(dfg.mean())
+            agg[agg_col] = i
+            aggregation_metrics.append(agg)
+
+        df_metrics = pd.DataFrame(aggregation_metrics)
+        df_metrics[loss_names].plot(grid=True, legend=True, xlabel='Epoch', ylabel='loss')
+        
+        loss_png = path.join(self.log_dir, self.log_name, f'version_{self.logger.version}', f'{name_prepend}_loss_metric.png')
+        plt.savefig(loss_png)
+        
+        df_metrics[eval_names].plot(grid=True, legend=True, xlabel='Epoch', ylabel='accuracy')
+        
+        acc_png = path.join(self.log_dir, self.log_name, f'version_{self.logger.version}', f'{name_prepend}_acc_metric.png')
+        plt.savefig(acc_png)
+        
+        plt.close()

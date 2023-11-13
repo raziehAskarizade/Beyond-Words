@@ -75,7 +75,7 @@ class BaseLightningModel(L.LightningModule):
         return optimizer if optimizer is not None else torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
     
     def _get_lr_scheduler(self, lr_scheduler):
-        return lr_scheduler if lr_scheduler is not None else torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=5, factor=0.2, mode='min')
+        return lr_scheduler if lr_scheduler is not None else torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=5, factor=0.3, mode='min')
             
 
         # return [optimier], [lr_scheduler]
@@ -106,14 +106,14 @@ class BinaryLightningModel(BaseLightningModel):
         loss, out_features = super(BinaryLightningModel, self).training_step(data_batch, *args, **kwargs)
         predicted_labels = out_features if out_features.shape[1] < 2 else torch.argmax(out_features, dim=1)
         self.train_acc(predicted_labels, data_batch[1].view(predicted_labels.shape))
-        self.log('train_acc', self.train_acc, prog_bar=True, on_epoch=True, on_step=False, batch_size=self.batch_size)
+        self.log('train_acc', self.train_acc, prog_bar=True, on_epoch=True, on_step=True, batch_size=self.batch_size)
         return loss
 
     def validation_step(self, data_batch, *args, **kwargs):
         out_features = super(BinaryLightningModel, self).validation_step(data_batch, *args, **kwargs)
         predicted_labels = out_features if out_features.shape[1] < 2 else torch.argmax(out_features, dim=1)
         self.val_acc(predicted_labels, data_batch[1].view(predicted_labels.shape))
-        self.log('val_acc', self.val_acc, prog_bar=True, on_epoch=True, on_step=False, batch_size=self.batch_size)
+        self.log('val_acc', self.val_acc, prog_bar=True, on_epoch=True, on_step=True, batch_size=self.batch_size)
 
     def _get_loss_func(self, loss_func):
         return loss_func \
