@@ -14,6 +14,7 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         def __init__(self):
             super(TagDepTokenGraphConstructor._Variables, self).__init__()
             self.nlp_pipeline: str = ''
+            
     def __init__(self, texts: List[str], save_path: str, config: Config,
                  lazy_construction=True, load_preprocessed_data=False, naming_prepend='' , use_compression=True, use_sentence_nodes=False, use_general_node=True, num_data_load=-1,num_general_nodes = 1):
 
