@@ -17,7 +17,7 @@ from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstruct
 from Scripts.DataManager.GraphLoader.GraphDataModule import GraphDataModule
 from torch.utils.data.dataset import random_split
 import torch
-from Scripts.DataManager.Datasets.GraphConstructorDataset import GraphConstructorDataset
+from Scripts.DataManager.Datasets.GraphConstructorDataset import GraphConstructorDataset, GraphConstructorDatasetRanged
 
 
 class AmazonReviewGraphDataModule(GraphDataModule):
@@ -43,8 +43,15 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         self.labels = None
         self.dataset = None
         self.shuffle = shuffle
+        self.num_data_load = num_data_load
+        
         self.df: pd.DataFrame = pd.DataFrame()
         self.__train_dataset, self.__val_dataset, self.__test_dataset = None, None, None
+        self.load_preprocessed_data = load_preprocessed_data
+        
+        
+    def load_labels(self):
+        
         self.train_df = pd.read_csv(path.join(self.config.root, self.train_data_path))
         self.test_df = pd.read_csv(path.join(self.config.root, self.test_data_path))
         self.train_df.columns = ['Polarity', 'Title', 'Review']
@@ -52,8 +59,8 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         self.train_df = self.train_df[['Polarity', 'Review']]
         self.test_df = self.test_df[['Polarity', 'Review']]
         self.df = pd.concat([self.train_df, self.test_df])
-        self.num_data_load = num_data_load if num_data_load>0 else self.df.shape[0]
-        self.num_data_load = num_data_load if self.num_data_load < self.df.shape[0] else self.df.shape[0] 
+        self.num_data_load = self.num_data_load if self.num_data_load>0 else self.df.shape[0]
+        self.num_data_load = self.num_data_load if self.num_data_load < self.df.shape[0] else self.df.shape[0] 
         self.df = self.df.iloc[:self.num_data_load]
         self.df.index = np.arange(0, self.num_data_load)
         # activate one line below
@@ -63,8 +70,9 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         labels = torch.from_numpy(labels)
         self.labels = labels.to(torch.float32).view(-1, 1).to(self.device)
         # graph_constructor = self.graph_constructors[TextGraphType.CO_OCCURRENCE]
-
         self.num_classes = len(torch.unique(self.labels))
+        
+    def load_graphs(self):
         
         self.graph_constructors = self.__set_graph_constructors(self.graph_type)
         
@@ -72,7 +80,7 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         self.__train_dataset, self.__val_dataset, self.__test_dataset = {}, {}, {}
         self.__train_dataloader, self.__test_dataloader, self.__val_dataloader = {}, {}, {}
         for key in self.graph_constructors:
-            self.graph_constructors[key].setup(load_preprocessed_data)
+            self.graph_constructors[key].setup(self.load_preprocessed_data)
             # reweighting
             if key in self.reweights:
                 for r in self.reweights[key]:
@@ -87,14 +95,33 @@ class AmazonReviewGraphDataModule(GraphDataModule):
             
         self.set_active_graph(key)
         
+    def get_data(self, datamodule):
+        self.labels = datamodule.labels
+        self.num_classes = datamodule.num_classes
+        self.graph_constructors = datamodule.graph_constructors
+        self.dataset, self.num_node_features = datamodule.dataset, datamodule.num_node_features
+        self.__train_dataset, self.__val_dataset, self.__test_dataset = datamodule.__train_dataset, datamodule.__val_dataset, datamodule.__test_dataset
+        self.__train_dataloader, self.__test_dataloader, self.__val_dataloader = datamodule.__train_dataloader, datamodule.__test_dataloader, datamodule.__val_dataloader
+        self.set_active_graph(datamodule.active_key )
+        
     def set_active_graph(self, graph_type: TextGraphType = TextGraphType.CO_OCCURRENCE):
         assert graph_type in self.dataset, 'The provided key is not valid'
         self.active_key = graph_type
         sample_graph = self.graph_constructors[self.active_key].get_first()
         self.num_node_features = sample_graph.num_features
-    
-    
-    
+           
+    def create_sub_data_loader(self, begin: int, end: int):
+        for key in self.graph_constructors:            
+            dataset = GraphConstructorDatasetRanged(self.graph_constructors[key], self.labels, begin, end)
+            train_dataset, val_dataset, test_dataset =\
+                random_split(dataset, [1-self.val_size-self.test_size, self.val_size, self.test_size])
+                
+            self.__train_dataloader[key] =  DataLoader(train_dataset, batch_size=self.batch_size, drop_last=self.drop_last, shuffle=self.shuffle, num_workers=0, persistent_workers=False)
+            self.__test_dataloader[key] =  DataLoader(test_dataset, batch_size=self.batch_size, num_workers=0, persistent_workers=False)
+            self.__val_dataloader[key] =  DataLoader(val_dataset, batch_size=self.batch_size, num_workers=0, persistent_workers=False)
+            
+        self.set_active_graph(key)
+        
     def prepare_data(self):
         pass
         
