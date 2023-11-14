@@ -38,8 +38,8 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         self.graphs_path = graphs_path if graphs_path!='' else 'data/GraphData/AmazonReview'
         self.train_data_path = 'data/Amazon-Review/train_sm.csv' if train_data_path == '' else train_data_path
         self.test_data_path = 'data/Amazon-Review/test_sm.csv' if test_data_path == '' else test_data_path
-        self.train_df: pd.DataFrame = pd.DataFrame()
-        self.test_df: pd.DataFrame = pd.DataFrame()
+        self.train_data_path2 = 'data/Amazon-Review/train_sm2.csv'
+        self.test_data_path2 = 'data/Amazon-Review/test_sm2.csv'
         self.labels = None
         self.dataset = None
         self.shuffle = shuffle
@@ -51,14 +51,19 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         
         
     def load_labels(self):
-        
         self.train_df = pd.read_csv(path.join(self.config.root, self.train_data_path))
         self.test_df = pd.read_csv(path.join(self.config.root, self.test_data_path))
+        self.train_df2 = pd.read_csv(path.join(self.config.root, self.train_data_path2))
+        self.test_df2 = pd.read_csv(path.join(self.config.root, self.test_data_path2))
         self.train_df.columns = ['Polarity', 'Title', 'Review']
         self.test_df.columns = ['Polarity', 'Title', 'Review']
         self.train_df = self.train_df[['Polarity', 'Review']]
         self.test_df = self.test_df[['Polarity', 'Review']]
-        self.df = pd.concat([self.train_df, self.test_df])
+        self.train_df2.columns = ['Polarity', 'Title', 'Review']
+        self.test_df2.columns = ['Polarity', 'Title', 'Review']
+        self.train_df2 = self.train_df2[['Polarity', 'Review']]
+        self.test_df2 = self.test_df2[['Polarity', 'Review']]
+        self.df = pd.concat([self.train_df, self.test_df,self.train_df2 , self.test_df2])
         self.num_data_load = self.num_data_load if self.num_data_load>0 else self.df.shape[0]
         self.num_data_load = self.num_data_load if self.num_data_load < self.df.shape[0] else self.df.shape[0] 
         self.df = self.df.iloc[:self.num_data_load]
