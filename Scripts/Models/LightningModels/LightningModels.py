@@ -5,6 +5,8 @@ from pytorch_lightning.utilities.types import OptimizerLRScheduler
 import lightning as L
 from abc import abstractmethod
 
+from Scripts.Models.LossFunctions.HeteroLossFunctions import HeteroLossArgs, HeteroLoss1
+
 class BaseLightningModel(L.LightningModule):
 
     def __init__(self, model, optimizer=None, loss_func=None, learning_rate=0.01, batch_size=64, lr_scheduler=None, user_lr_scheduler=False, min_lr=0.0):
