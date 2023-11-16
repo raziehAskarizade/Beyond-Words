@@ -13,6 +13,7 @@ from Scripts.DataManager.GraphConstructor.DependencyGraphConstructor import Depe
 from Scripts.DataManager.GraphConstructor.SequentialGraphConstructor import SequentialGraphConstructor
 from Scripts.DataManager.GraphConstructor.TagDepTokenGraphConstructor import TagDepTokenGraphConstructor
 from Scripts.DataManager.GraphConstructor.SentenceGraphConstructor import SentenceGraphConstructor
+from Scripts.DataManager.GraphConstructor.SentimentGraphConstructor import SentimentGraphConstructor
 from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor, TextGraphType
 from Scripts.DataManager.GraphLoader.GraphDataModule import GraphDataModule
 from torch.utils.data.dataset import random_split
@@ -177,7 +178,7 @@ class AmazonReviewGraphDataModule(GraphDataModule):
             graph_type = graph_type - (TextGraphType.DEPENDENCY | TextGraphType.SEQUENTIAL)
         
         if TextGraphType.TAGS in graph_type:
-            graph_constructors[TextGraphType.TAGS] = self.__get_tag_graph()
+            graph_constructors[TextGraphType.TAGS] = self.__get_tags_graph()
             graph_type = graph_type - (TextGraphType.TAGS | TextGraphType.SEQUENTIAL)
             
         if TextGraphType.SENTENCE in graph_type:
@@ -185,8 +186,11 @@ class AmazonReviewGraphDataModule(GraphDataModule):
             graph_type = graph_type - (TextGraphType.SENTENCE | TextGraphType.SEQUENTIAL)
         
         if TextGraphType.SEQUENTIAL in graph_type:
-            graph_constructors[TextGraphType.SEQUENTIAL] = self.__get_Sequential_graph()
+            graph_constructors[TextGraphType.SEQUENTIAL] = self.__get_sequential_graph()
             graph_type = graph_type - TextGraphType.SEQUENTIAL
+        if TextGraphType.SENTIMENT in graph_type:
+            graph_constructors[TextGraphType.SENTIMENT] = self.__get_sentiment_graph()
+            graph_type = graph_type - TextGraphType.SENTIMENT
             
         return graph_constructors
 
@@ -200,7 +204,7 @@ class AmazonReviewGraphDataModule(GraphDataModule):
     
     def __get_sequential_graph(self):
         print(f'self.num_data_load: {self.num_data_load}')
-        return SequentialGraphConstructor(self.df['Review'][:self.num_data_load], path.join(self.graphs_path, 'seq'), self.config, lazy_construction=False, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load , use_general_node=True)
+        return SequentialGraphConstructor(self.df['Review'][:self.num_data_load], path.join(self.graphs_path, 'seq_gen'), self.config, lazy_construction=False, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load , use_general_node=True)
     
     def __get_dep_and_tag_graph(self):
         print(f'self.num_data_load: {self.num_data_load}')
@@ -216,7 +220,9 @@ class AmazonReviewGraphDataModule(GraphDataModule):
     
     def __get_sentence_graph(self):
         print(f'self.num_data_load: {self.num_data_load}')
-        return SentenceGraphConstructor(self.df['Review'][:self.num_data_load], path.join(self.graphs_path, 'sents'), self.config, lazy_construction=False, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load, use_general_node=True)
-    
+        return SentenceGraphConstructor(self.df['Review'][:self.num_data_load], path.join(self.graphs_path, 'sents_gen'), self.config, lazy_construction=False, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load, use_general_node=True)
+    def __get_sentiment_graph(self):
+        print(f'self.num_data_load: {self.num_data_load}')
+        return SentimentGraphConstructor(self.df['Review'][:self.num_data_load], path.join(self.graphs_path, 'sentiment'), self.config, lazy_construction=False, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load, use_sentence_nodes=True , use_general_node=True)
     def zero_rule_baseline(self):
         return f'zero_rule baseline: {(len(self.labels[self.labels>0.5])* 100.0 / len(self.labels))  : .2f}%'

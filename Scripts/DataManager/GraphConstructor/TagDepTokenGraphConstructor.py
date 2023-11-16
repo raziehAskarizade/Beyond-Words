@@ -34,7 +34,7 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         self.load_preprocessed_data = True
         if load_preprocessed_data:
             self.load_var()
-            self.num_data_load = self.var.graph_num if self.num_data_load > self.var.graph_num else self.num_data_load
+            # self.num_data_load = self.var.graph_num if self.num_data_load > self.var.graph_num else self.num_data_load
             if not self.lazy_construction:
                 for i in range(self.num_data_load):
                     if i%100 == 0:
