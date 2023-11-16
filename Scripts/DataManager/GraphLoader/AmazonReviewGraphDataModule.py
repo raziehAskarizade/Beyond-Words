@@ -78,7 +78,6 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         self.num_classes = len(torch.unique(self.labels))
         
     def load_graphs(self):
-        
         self.graph_constructors = self.__set_graph_constructors(self.graph_type)
         
         self.dataset, self.num_node_features = {}, {}
@@ -100,6 +99,17 @@ class AmazonReviewGraphDataModule(GraphDataModule):
             
         self.set_active_graph(key)
         
+    
+    def update_batch_size(self, batch_size):
+        self.batch_size = batch_size
+        
+        for key in self.graph_constructors:
+            self.__train_dataloader[key] =  DataLoader(self.__train_dataset[key], batch_size=self.batch_size, drop_last=self.drop_last, shuffle=self.shuffle, num_workers=0, persistent_workers=False)
+            self.__test_dataloader[key] =  DataLoader(self.__test_dataset[key], batch_size=self.batch_size, num_workers=0, persistent_workers=False)
+            self.__val_dataloader[key] =  DataLoader(self.__val_dataset[key], batch_size=self.batch_size, num_workers=0, persistent_workers=False)
+            
+        self.set_active_graph(key)    
+    
     def get_data(self, datamodule):
         self.labels = datamodule.labels
         self.num_classes = datamodule.num_classes
