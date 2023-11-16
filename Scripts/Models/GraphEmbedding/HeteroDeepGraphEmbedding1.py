@@ -16,14 +16,16 @@ class HeteroDeepGraphEmbedding1(torch.nn.Module):
                  metadata,
                  hidden_feature: int=256,
                  device = 'cpu',
-                 dropout=0.1):
+                 dropout=0.1,
+                 edge_type_count=9):
 
         super(HeteroDeepGraphEmbedding1, self).__init__()
         self.input_features = input_feature
         self.num_out_features = out_features
         self.bsh: int = hidden_feature
+        self.edge_type_count = edge_type_count
 
-        self.part_weight_norm = torch.nn.LayerNorm((9,))
+        self.part_weight_norm = torch.nn.LayerNorm((self.edge_type_count,))
         self.norm = PairNorm()
         self.drop = torch.nn.Dropout(0.2)
         self.hetero_linear_1 = to_hetero(HeteroLinear(input_feature, self.bsh, dropout), metadata)
@@ -49,8 +51,8 @@ class HeteroDeepGraphEmbedding1(torch.nn.Module):
         self.dep_unembedding = torch.nn.Linear(self.input_features, 45)
         self.tag_unembedding = torch.nn.Linear(self.input_features, 50)
         
-        self.pw1 = torch.nn.Parameter(torch.randn([9,], dtype=torch.float32), requires_grad=True)
-        self.pw2 = torch.nn.Parameter(torch.randn([9,], dtype=torch.float32), requires_grad=True)
+        self.pw1 = torch.nn.Parameter(torch.randn([self.edge_type_count,], dtype=torch.float32), requires_grad=True)
+        self.pw2 = torch.nn.Parameter(torch.randn([self.edge_type_count,], dtype=torch.float32), requires_grad=True)
 
     def forward(self, x: HeteroData) -> Tensor:
         x_dict, edge_attr_dict, edge_index_dict = self.preprocess_data(x)
