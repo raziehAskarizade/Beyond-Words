@@ -23,6 +23,7 @@ class TextGraphType(Flags):
     TAGS = 8
     SENTENCE =16
     FULL = 31
+    SENTIMENT = 32
 
 
 class GraphConstructor(ABC):
