@@ -22,43 +22,12 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
             self.nlp_pipeline: str = ''
 
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='', use_compression=True, num_data_load=-1):
+                load_preprocessed_data=False, naming_prepend='', use_compression=True, start_data_load=0, end_data_load=-1):
         super(CoOccurrenceGraphConstructor, self)\
-            .__init__(texts, self._Variables(), save_path, config, lazy_construction, load_preprocessed_data, naming_prepend, use_compression, num_data_load)
+            .__init__(texts, self._Variables(), save_path, config, load_preprocessed_data, naming_prepend, use_compression, start_data_load, end_data_load)
         self.var.nlp_pipeline = self.config.spacy.pipeline
         self.var.graph_num = len(self.raw_data)
         self.nlp = spacy.load(self.var.nlp_pipeline)
-        
-    def setup(self, load_preprocessed_data = True):
-        self.load_preprocessed_data = True
-        if load_preprocessed_data:
-            self.load_var()
-            self.num_data_load = self.var.graph_num if self.num_data_load > self.var.graph_num else self.num_data_load
-            if not self.lazy_construction:
-                for i in range(self.num_data_load):
-                    if i%100 == 0:
-                        print(f' {i} graph loaded')
-                    if (self._graphs[i] is None) and (i in self.var.graphs_name):
-                        self.load_data_compressed(i)
-                    else:
-                        self._graphs[i] = self.to_graph(self.raw_data[i])
-                        self.var.graphs_name[i] = f'{self.naming_prepend}_{i}'
-                        self.save_data_compressed(i)
-                self.var.save_to_file(os.path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
-        else:
-            if not self.lazy_construction:
-                save_start = 0
-                self.num_data_load = len(self.raw_data) if self.num_data_load > len(self.raw_data) else self.num_data_load
-                for i in range(self.num_data_load):
-                    if i not in self._graphs:
-                        if i % 100 == 0:
-                            self.save_data_range(save_start, i)
-                            save_start = i
-                            print(f'i: {i}')
-                        self._graphs[i] = self.to_graph(self.raw_data[i])
-                        self.var.graphs_name[i] = f'{self.naming_prepend}_{i}'
-                self.save_data_range(save_start, self.num_data_load)
-            self.var.save_to_file(os.path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
 
     def to_graph(self, text: str):
         doc = self.nlp(text)

@@ -34,10 +34,10 @@
      "output_type": "stream",
      "text": [
 <<<<<<< HEAD
-      "self.num_data_load: 60000\n",
+      "self.end_data_load: 60000\n",
       "filename: E:\\Darsi\\Payan Name Arshad\\Second Work\\ColorIntelligence\\data/GraphData/AmazonReview\\full\\graph_var.txt\n",
 =======
-      "self.num_data_load: 50000\n",
+      "self.end_data_load: 50000\n",
       "filename: C:\\Users\\fardin\\Projects\\ColorIntelligence\\data/GraphData/AmazonReview\\full\\graph_var.txt\n",
 >>>>>>> fab886b (KGC-73 Debug lightning model and loss function, test model)
       " 0 graph loaded\n",
@@ -650,9 +650,9 @@
    "source": [
     "tag_dep_seq_sent = TextGraphType.DEPENDENCY | TextGraphType.TAGS | TextGraphType.SEQUENTIAL | TextGraphType.SENTENCE\n",
 <<<<<<< HEAD
-    "data_manager = AmazonReviewGraphDataModule(config, True, True, shuffle=False, num_data_load = 60000, device='cpu', batch_size=batch_size, graph_type=tag_dep_seq_sent, load_preprocessed_data = True)\n",
+    "data_manager = AmazonReviewGraphDataModule(config, True, True, shuffle=False, end_data_load = 60000, device='cpu', batch_size=batch_size, graph_type=tag_dep_seq_sent, load_preprocessed_data = True)\n",
 =======
-    "data_manager = AmazonReviewGraphDataModule(config, True, True, shuffle=False, num_data_load = 50000, device='cpu', batch_size=batch_size, graph_type=tag_dep_seq_sent, load_preprocessed_data = True)\n",
+    "data_manager = AmazonReviewGraphDataModule(config, True, True, shuffle=False, end_data_load = 50000, device='cpu', batch_size=batch_size, graph_type=tag_dep_seq_sent, load_preprocessed_data = True)\n",
 >>>>>>> fab886b (KGC-73 Debug lightning model and loss function, test model)
     "data_manager.load_labels()\n",
     "data_manager.load_graphs()"
@@ -665,7 +665,7 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "# data_manager2 = AmazonReviewGraphDataModule(config, True, True, shuffle=False, num_data_load = -1, device='cpu', batch_size=batch_size, graph_type=tag_dep_seq_sent, load_preprocessed_data = True)\n",
+    "# data_manager2 = AmazonReviewGraphDataModule(config, True, True, shuffle=False, end_data_load = -1, device='cpu', batch_size=batch_size, graph_type=tag_dep_seq_sent, load_preprocessed_data = True)\n",
     "# data_manager2.get_data(data_manager)\n",
     "data_manager2 = data_manager"
    ]

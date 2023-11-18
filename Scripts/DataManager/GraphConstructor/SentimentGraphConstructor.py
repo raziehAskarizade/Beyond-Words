@@ -23,11 +23,11 @@ class SentimentGraphConstructor(TagDepTokenGraphConstructor):
             self.nlp_pipeline: str = ''
             
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='' , use_compression=True,use_sentence_nodes=False, use_general_node=True, num_data_load=-1,num_general_nodes = 1):
+                load_preprocessed_data=False, naming_prepend='' , use_compression=True,use_sentence_nodes=False, use_general_node=True, start_data_load=0, end_data_load=-1,num_general_nodes = 1):
 
         super(SentimentGraphConstructor, self)\
-            .__init__(texts, save_path, config, lazy_construction, load_preprocessed_data,
-                      naming_prepend  , use_compression,use_sentence_nodes, use_general_node, num_data_load,num_general_nodes)
+            .__init__(texts, save_path, config, load_preprocessed_data,
+                      naming_prepend  , use_compression,use_sentence_nodes, use_general_node, start_data_load, end_data_load,num_general_nodes)
         # self.settings["token_sentiment_weight"] = 2
         self.nlp.add_pipe('spacytextblob')
         
@@ -39,7 +39,10 @@ class SentimentGraphConstructor(TagDepTokenGraphConstructor):
     def _build_initial_sentiment_vector(self):
         return torch.zeros((2 , self.nlp.vocab.vectors_length), dtype=torch.float32)   
     def __create_sentiment_graph(self , doc , for_compression=False):
-        data = super().to_graph(doc)
+        if for_compression:
+            data = super().to_graph_indexed(doc)
+        else:
+            data = super().to_graph(doc)
         # adding sentiment nodes
         if for_compression:
             data['sentiment'].x = torch.full((2,),-1, dtype=torch.float32)
@@ -64,13 +67,8 @@ class SentimentGraphConstructor(TagDepTokenGraphConstructor):
                 word_sentiment_edge_attr.append(abs(token._.blob.polarity))
                 sentiment_word_edge_attr.append(abs(token._.blob.polarity))
         if len(word_sentiment_edge_index) > 0:
-            data['word' , 'word_sentiment' , 'sentiment'].edge_index = torch.transpose(torch.tensor(word_sentiment_edge_index, dtype=torch.int32) , 0 , 1)
-            data['sentiment' , 'sentiment_word' , 'word'].edge_index = torch.transpose(torch.tensor(sentiment_word_edge_index, dtype=torch.int32) , 0 , 1)
-            data['word' , 'word_sentiment' , 'sentiment'].edge_attr = torch.tensor(word_sentiment_edge_attr, dtype=torch.float32)
-            data['sentiment' , 'sentiment_word' , 'word'].edge_attr = torch.tensor(sentiment_word_edge_attr, dtype=torch.float32)
-        else:
-            data['word' , 'word_sentiment' , 'sentiment'].edge_index = torch.tensor(word_sentiment_edge_index, dtype=torch.int32)
-            data['sentiment' , 'sentiment_word' , 'word'].edge_index = torch.tensor(sentiment_word_edge_index, dtype=torch.int32)
+            data['word' , 'word_sentiment' , 'sentiment'].edge_index = torch.transpose(torch.tensor(word_sentiment_edge_index, dtype=torch.int32) , 0 , 1) if len(word_sentiment_edge_index) > 0 else []
+            data['sentiment' , 'sentiment_word' , 'word'].edge_index = torch.transpose(torch.tensor(sentiment_word_edge_index, dtype=torch.int32) , 0 , 1) if len(sentiment_word_edge_index) > 0 else []
             data['word' , 'word_sentiment' , 'sentiment'].edge_attr = torch.tensor(word_sentiment_edge_attr, dtype=torch.float32)
             data['sentiment' , 'sentiment_word' , 'word'].edge_attr = torch.tensor(sentiment_word_edge_attr, dtype=torch.float32)
         return data
