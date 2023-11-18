@@ -16,10 +16,10 @@ class TagDepTokenGraphConstructor(GraphConstructor):
             self.nlp_pipeline: str = ''
             
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                 load_preprocessed_data=False, naming_prepend='' , use_compression=True, use_sentence_nodes=False, use_general_node=True, num_data_load=-1,num_general_nodes = 1):
+                 load_preprocessed_data=False, naming_prepend='' , use_compression=True, use_sentence_nodes=False, use_general_node=True, start_data_load=0, end_data_load=-1,num_general_nodes = 1):
 
         super(TagDepTokenGraphConstructor, self)\
-            .__init__(texts, self._Variables(), save_path, config, load_preprocessed_data, naming_prepend , use_compression, num_data_load)
+            .__init__(texts, self._Variables(), save_path, config, load_preprocessed_data, naming_prepend , use_compression, start_data_load, end_data_load)
         self.settings = {"dep_token_weight" : 1, "token_token_weight" : 2, "tag_token_weight" : 1, "general_token_weight" : 1, "general_sentence_weight" : 1, "token_sentence_weight" : 1}
         self.use_sentence_nodes = use_sentence_nodes
         self.use_general_node = use_general_node

@@ -22,11 +22,11 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
             self.nlp_pipeline: str = ''
             
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                load_preprocessed_data=False, naming_prepend='', use_general_node=False , use_compression=True, num_data_load=-1 , num_general_nodes=1):
+                load_preprocessed_data=False, naming_prepend='', use_general_node=False , use_compression=True, start_data_load=0, end_data_load=-1 , num_general_nodes=1):
 
         super(SentenceGraphConstructor, self)\
             .__init__(texts, save_path, config, load_preprocessed_data,
-                      naming_prepend , False , use_compression,num_data_load,num_general_nodes)
+                      naming_prepend , False , use_compression,start_data_load, end_data_load,num_general_nodes)
         self.settings = {"token_sentence_weight" : 1, "token_token_weight" : 2 , "general_sentence_weight" : 2}
         self.use_general_node = use_general_node
         self.var.nlp_pipeline = self.config.spacy.pipeline

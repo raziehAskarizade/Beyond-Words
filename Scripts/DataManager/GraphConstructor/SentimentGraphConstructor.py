@@ -23,11 +23,11 @@ class SentimentGraphConstructor(TagDepTokenGraphConstructor):
             self.nlp_pipeline: str = ''
             
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                load_preprocessed_data=False, naming_prepend='' , use_compression=True,use_sentence_nodes=False, use_general_node=True, num_data_load=-1,num_general_nodes = 1):
+                load_preprocessed_data=False, naming_prepend='' , use_compression=True,use_sentence_nodes=False, use_general_node=True, start_data_load=0, end_data_load=-1,num_general_nodes = 1):
 
         super(SentimentGraphConstructor, self)\
             .__init__(texts, save_path, config, load_preprocessed_data,
-                      naming_prepend  , use_compression,use_sentence_nodes, use_general_node, num_data_load,num_general_nodes)
+                      naming_prepend  , use_compression,use_sentence_nodes, use_general_node, start_data_load, end_data_load,num_general_nodes)
         # self.settings["token_sentiment_weight"] = 2
         self.nlp.add_pipe('spacytextblob')
         

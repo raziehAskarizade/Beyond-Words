@@ -23,7 +23,7 @@ from Scripts.DataManager.Datasets.GraphConstructorDataset import GraphConstructo
 
 class AmazonReviewGraphDataModule(GraphDataModule):
 
-    def __init__(self, config: Config, has_val: bool, has_test: bool, test_size=0.2, val_size=0.2, num_workers=2, drop_last=True, train_data_path='', test_data_path='', graphs_path='', batch_size = 32, device='cpu', shuffle = False, num_data_load=-1, graph_type: TextGraphType = TextGraphType.FULL, load_preprocessed_data = True, reweights={}, *args, **kwargs):
+    def __init__(self, config: Config, has_val: bool, has_test: bool, test_size=0.2, val_size=0.2, num_workers=2, drop_last=True, train_data_path='', test_data_path='', graphs_path='', batch_size = 32, device='cpu', shuffle = False,start_data_load=0, end_data_load=-1, graph_type: TextGraphType = TextGraphType.FULL, load_preprocessed_data = True, reweights={}, *args, **kwargs):
         # Sample reweight [None,None,None,None,[(("word" , "seq" , "word") , 5)]]
         # 5 is weight in above code
         # (("word" , "seq" , "word") , 5)
@@ -44,8 +44,8 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         self.labels = None
         self.dataset = None
         self.shuffle = shuffle
-        self.num_data_load = num_data_load
-        
+        self.start_data_load = start_data_load
+        self.end_data_load = end_data_load
         self.df: pd.DataFrame = pd.DataFrame()
         self.__train_dataset, self.__val_dataset, self.__test_dataset = None, None, None
         self.load_preprocessed_data = load_preprocessed_data
@@ -65,13 +65,13 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         self.train_df2 = self.train_df2[['Polarity', 'Review']]
         self.test_df2 = self.test_df2[['Polarity', 'Review']]
         self.df = pd.concat([self.train_df, self.test_df,self.train_df2 , self.test_df2])
-        self.num_data_load = self.num_data_load if self.num_data_load>0 else self.df.shape[0]
-        self.num_data_load = self.num_data_load if self.num_data_load < self.df.shape[0] else self.df.shape[0] 
-        self.df = self.df.iloc[:self.num_data_load]
-        self.df.index = np.arange(0, self.num_data_load)
+        self.end_data_load = self.end_data_load if self.end_data_load>0 else self.df.shape[0]
+        self.end_data_load = self.end_data_load if self.end_data_load < self.df.shape[0] else self.df.shape[0] 
+        self.df = self.df.iloc[:self.end_data_load]
+        self.df.index = np.arange(0, self.end_data_load)
         # activate one line below
 
-        labels = self.df['Polarity'][:self.num_data_load]
+        labels = self.df['Polarity'][:self.end_data_load]
         labels = labels.apply(lambda p: 0 if p == 1 else 1).to_numpy()
         labels = torch.from_numpy(labels)
         self.labels = labels.to(torch.float32).view(-1, 1).to(self.device)
@@ -195,34 +195,34 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         return graph_constructors
 
     def __get_co_occurrence_graph(self):
-        print(f'self.num_data_load: {self.num_data_load}')
-        return CoOccurrenceGraphConstructor(self.df['Review'][:self.num_data_load], path.join(self.graphs_path, 'co_occ'), self.config, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load)
+        print(f'self.end_data_load: {self.end_data_load}')
+        return CoOccurrenceGraphConstructor(self.df['Review'][:self.end_data_load], path.join(self.graphs_path, 'co_occ'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load)
     
     def __get_dependency_graph(self):
-        print(f'self.num_data_load: {self.num_data_load}')
-        return DependencyGraphConstructor(self.df['Review'][:self.num_data_load], path.join(self.graphs_path, 'dep'), self.config, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load , use_node_dependencies=True)
+        print(f'self.end_data_load: {self.end_data_load}')
+        return DependencyGraphConstructor(self.df['Review'][:self.end_data_load], path.join(self.graphs_path, 'dep'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load , use_node_dependencies=True)
     
     def __get_sequential_graph(self):
-        print(f'self.num_data_load: {self.num_data_load}')
-        return SequentialGraphConstructor(self.df['Review'][:self.num_data_load], path.join(self.graphs_path, 'seq_gen'), self.config, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load , use_general_node=True)
+        print(f'self.end_data_load: {self.end_data_load}')
+        return SequentialGraphConstructor(self.df['Review'][:self.end_data_load], path.join(self.graphs_path, 'seq_gen'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load , use_general_node=True)
     
     def __get_dep_and_tag_graph(self):
-        print(f'self.num_data_load: {self.num_data_load}')
-        return TagDepTokenGraphConstructor(self.df['Review'][:self.num_data_load], path.join(self.graphs_path, 'dep_and_tag'), self.config, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load, use_sentence_nodes=False , use_general_node=True)
+        print(f'self.end_data_load: {self.end_data_load}')
+        return TagDepTokenGraphConstructor(self.df['Review'][:self.end_data_load], path.join(self.graphs_path, 'dep_and_tag'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=False , use_general_node=True)
     
     def __get_tags_graph(self):
-        print(f'self.num_data_load: {self.num_data_load}')
-        return TagsGraphConstructor(self.df['Review'][:self.num_data_load], path.join(self.graphs_path, 'tags'), self.config, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load)
+        print(f'self.end_data_load: {self.end_data_load}')
+        return TagsGraphConstructor(self.df['Review'][:self.end_data_load], path.join(self.graphs_path, 'tags'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load)
     
     def __get_full_graph(self):
-        print(f'self.num_data_load: {self.num_data_load}')
-        return TagDepTokenGraphConstructor(self.df['Review'][:self.num_data_load], path.join(self.graphs_path, 'full'), self.config, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load, use_sentence_nodes=True , use_general_node=True)
+        print(f'self.end_data_load: {self.end_data_load}')
+        return TagDepTokenGraphConstructor(self.df['Review'][:self.end_data_load], path.join(self.graphs_path, 'full'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=True , use_general_node=True)
     
     def __get_sentence_graph(self):
-        print(f'self.num_data_load: {self.num_data_load}')
-        return SentenceGraphConstructor(self.df['Review'][:self.num_data_load], path.join(self.graphs_path, 'sents_gen'), self.config, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load, use_general_node=True)
+        print(f'self.end_data_load: {self.end_data_load}')
+        return SentenceGraphConstructor(self.df['Review'][:self.end_data_load], path.join(self.graphs_path, 'sents_gen'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_general_node=True)
     def __get_sentiment_graph(self):
-        print(f'self.num_data_load: {self.num_data_load}')
-        return SentimentGraphConstructor(self.df['Review'][:self.num_data_load], path.join(self.graphs_path, 'sentiment'), self.config, load_preprocessed_data=True, naming_prepend='graph', num_data_load=self.num_data_load, use_sentence_nodes=True , use_general_node=True)
+        print(f'self.end_data_load: {self.end_data_load}')
+        return SentimentGraphConstructor(self.df['Review'][:self.end_data_load], path.join(self.graphs_path, 'sentiment'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=True , use_general_node=True)
     def zero_rule_baseline(self):
         return f'zero_rule baseline: {(len(self.labels[self.labels>0.5])* 100.0 / len(self.labels))  : .2f}%'

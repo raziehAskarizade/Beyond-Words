@@ -21,11 +21,11 @@ class SequentialGraphConstructor(GraphConstructor):
             super(SequentialGraphConstructor._Variables, self).__init__()
             self.nlp_pipeline: str = ''
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                load_preprocessed_data=False, naming_prepend='', use_general_node=False , use_compression=True, num_data_load=-1 , num_general_nodes=1):
+                load_preprocessed_data=False, naming_prepend='', use_general_node=False , use_compression=True, start_data_load=0, end_data_load=-1 , num_general_nodes=1):
 
         super(SequentialGraphConstructor, self)\
             .__init__(texts, self._Variables(), save_path, config, load_preprocessed_data,
-                      naming_prepend , use_compression, num_data_load)
+                      naming_prepend , use_compression, start_data_load, end_data_load)
         self.settings = { "token_token_weight" : 2 , "general_token_weight" : 2}
         self.use_general_node = use_general_node
         self.var.nlp_pipeline = self.config.spacy.pipeline

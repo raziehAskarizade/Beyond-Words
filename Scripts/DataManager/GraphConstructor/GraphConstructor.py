@@ -10,7 +10,7 @@ from torch_geometric.data import Data
 from typing import Tuple, Any, List, Dict
 from torch_geometric.data import HeteroData
 from torch_geometric.utils import to_networkx
-
+from tqdm import tqdm
 from Scripts.Configs.ConfigClass import Config
 from enum import Enum
 from flags import Flags
@@ -48,17 +48,18 @@ class GraphConstructor(ABC):
                 raise ValueError("Invalid file content. Unable to recreate the object.")
 
     def __init__(self, raw_data, variables: _Variables, save_path: str, config: Config,
-                 load_preprocessed_data: bool, naming_prepend: str = '', use_compression=True, num_data_load=-1):
+                 load_preprocessed_data: bool, naming_prepend: str = '', use_compression=True, start_data_load=0, end_data_load=-1):
         
         self.raw_data = raw_data
-        self.num_data_load = num_data_load if num_data_load > 0 else len(self.raw_data)
+        self.start_data_load = start_data_load
+        self.end_data_load = end_data_load if end_data_load > 0 else len(self.raw_data)
         self.config: Config = config
         self.load_preprocessed_data = load_preprocessed_data
         self.var = variables
         self.save_path = os.path.join(config.root, save_path)
         self.naming_prepend = naming_prepend
         self.use_compression = use_compression
-        self.saving_batch_size = 100
+        self.saving_batch_size = 1000
         # self.node_attr, self.node_label, self.edge_index, self.edge_attr, self.edge_label = None, None, None, None, None
         # self.data = Data(x=self.node_attr, y=self.node_label, edge_index=self.edge_index)
         self._graphs: List = [None for r in raw_data]
@@ -67,22 +68,20 @@ class GraphConstructor(ABC):
         self.load_preprocessed_data = True
         if load_preprocessed_data:
             self.load_var()
-            self.num_data_load = self.var.graph_num if self.num_data_load > self.var.graph_num else self.num_data_load
-            for i in range(0 , self.num_data_load , self.saving_batch_size):
-                print(f' {i} graph loaded')
+            self.end_data_load = self.var.graph_num if self.end_data_load > self.var.graph_num else self.end_data_load
+            for i in tqdm(range(self.start_data_load , self.end_data_load , self.saving_batch_size), desc =" Loding Graphs From File "):
                 self.load_data_range(i , i + self.saving_batch_size)
         else:
-            save_start = 0
-            self.num_data_load = len(self.raw_data) if self.num_data_load > len(self.raw_data) else self.num_data_load
-            for i in range(self.num_data_load):
+            save_start = self.start_data_load
+            self.end_data_load = len(self.raw_data) if self.end_data_load > len(self.raw_data) else self.end_data_load
+            for i in tqdm(range(self.start_data_load , self.end_data_load), desc =" Creating Graphs "):
                 if i % self.saving_batch_size == 0:
-                    if i != 0: 
+                    if i != self.start_data_load: 
                         self.save_data_range(save_start, save_start + self.saving_batch_size)
                         save_start = i
-                        print(f'i: {i}')
                 self._graphs[i] = self.to_graph(self.raw_data[i])
                 self.var.graphs_name[i] = f'{self.naming_prepend}_{i}'
-            self.save_data_range(save_start, self.num_data_load)
+            self.save_data_range(save_start, self.end_data_load)
             self.var.save_to_file(os.path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
 
     @abstractmethod
@@ -101,14 +100,8 @@ class GraphConstructor(ABC):
 
     def get_graph(self, idx: int):
         if self._graphs[idx] is None:
-            if self.load_preprocessed_data:
-                if self.use_compression:
-                    self.load_data_compressed(idx)
-                else:
-                    self.load_data(idx)
-            else:
-                self._graphs[idx] = self.to_graph(self.raw_data[idx])
-                self.var.graphs_name[idx] = f'{self.naming_prepend}_{idx}'
+            self._graphs[idx] = self.to_graph(self.raw_data[idx])
+            self.var.graphs_name[idx] = f'{self.naming_prepend}_{idx}'
         return self._graphs[idx]
 
     # @abstractmethod

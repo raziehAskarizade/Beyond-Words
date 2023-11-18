@@ -23,11 +23,11 @@ class DependencyGraphConstructor(GraphConstructor):
             super(DependencyGraphConstructor._Variables, self).__init__()
             self.nlp_pipeline: str = ''
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                load_preprocessed_data=False, naming_prepend='', use_node_dependencies: bool = False, use_compression=True, num_data_load=-1):
+                load_preprocessed_data=False, naming_prepend='', use_node_dependencies: bool = False, use_compression=True, start_data_load=0, end_data_load=-1):
 
         super(DependencyGraphConstructor, self)\
             .__init__(texts, self._Variables(), save_path, config, load_preprocessed_data,
-                      naming_prepend , use_compression, num_data_load)
+                      naming_prepend , use_compression, start_data_load, end_data_load)
         self.settings = {"tokens_dep_weight" : 1,"dep_tokens_weight" : 1, "token_token_weight" : 2}
         self.use_node_dependencies = use_node_dependencies
         self.var.nlp_pipeline = self.config.spacy.pipeline

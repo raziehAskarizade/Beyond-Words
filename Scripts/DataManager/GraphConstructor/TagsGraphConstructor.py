@@ -22,11 +22,11 @@ class TagsGraphConstructor(GraphConstructor):
             self.nlp_pipeline: str = ''
 
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                 load_preprocessed_data=False, naming_prepend='' , use_compression=True, num_data_load=-1):
+                 load_preprocessed_data=False, naming_prepend='' , use_compression=True, start_data_load=0, end_data_load=-1):
 
         super(TagsGraphConstructor, self)\
             .__init__(texts, self._Variables(), save_path, config, load_preprocessed_data,
-                      naming_prepend , use_compression,num_data_load)
+                      naming_prepend , use_compression,start_data_load, end_data_load)
         self.settings = {"tokens_tag_weight" : 1, "token_token_weight" : 2}
         self.var.nlp_pipeline = self.config.spacy.pipeline
         self.var.graph_num = len(self.raw_data)

@@ -22,9 +22,9 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
             self.nlp_pipeline: str = ''
 
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                load_preprocessed_data=False, naming_prepend='', use_compression=True, num_data_load=-1):
+                load_preprocessed_data=False, naming_prepend='', use_compression=True, start_data_load=0, end_data_load=-1):
         super(CoOccurrenceGraphConstructor, self)\
-            .__init__(texts, self._Variables(), save_path, config, load_preprocessed_data, naming_prepend, use_compression, num_data_load)
+            .__init__(texts, self._Variables(), save_path, config, load_preprocessed_data, naming_prepend, use_compression, start_data_load, end_data_load)
         self.var.nlp_pipeline = self.config.spacy.pipeline
         self.var.graph_num = len(self.raw_data)
         self.nlp = spacy.load(self.var.nlp_pipeline)
