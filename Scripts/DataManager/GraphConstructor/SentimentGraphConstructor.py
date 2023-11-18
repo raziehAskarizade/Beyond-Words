@@ -39,7 +39,10 @@ class SentimentGraphConstructor(TagDepTokenGraphConstructor):
     def _build_initial_sentiment_vector(self):
         return torch.zeros((2 , self.nlp.vocab.vectors_length), dtype=torch.float32)   
     def __create_sentiment_graph(self , doc , for_compression=False):
-        data = super().to_graph(doc)
+        if for_compression:
+            data = super().to_graph_indexed(doc)
+        else:
+            data = super().to_graph(doc)
         # adding sentiment nodes
         if for_compression:
             data['sentiment'].x = torch.full((2,),-1, dtype=torch.float32)
