@@ -16,10 +16,10 @@ class TagDepTokenGraphConstructor(GraphConstructor):
             self.nlp_pipeline: str = ''
             
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='' , use_compression=True, use_sentence_nodes=False, use_general_node=True, num_data_load=-1,num_general_nodes = 1):
+                 load_preprocessed_data=False, naming_prepend='' , use_compression=True, use_sentence_nodes=False, use_general_node=True, num_data_load=-1,num_general_nodes = 1):
 
         super(TagDepTokenGraphConstructor, self)\
-            .__init__(texts, self._Variables(), save_path, config, lazy_construction, load_preprocessed_data, naming_prepend , use_compression, num_data_load)
+            .__init__(texts, self._Variables(), save_path, config, load_preprocessed_data, naming_prepend , use_compression, num_data_load)
         self.settings = {"dep_token_weight" : 1, "token_token_weight" : 2, "tag_token_weight" : 1, "general_token_weight" : 1, "general_sentence_weight" : 1, "token_sentence_weight" : 1}
         self.use_sentence_nodes = use_sentence_nodes
         self.use_general_node = use_general_node
@@ -29,39 +29,7 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         self.dependencies = self.nlp.get_pipe("parser").labels
         self.tags = self.nlp.get_pipe("tagger").labels
         self.num_general_nodes = num_general_nodes
-            
-    def setup(self, load_preprocessed_data = True):
-        self.load_preprocessed_data = True
-        if load_preprocessed_data:
-            self.load_var()
-            # self.num_data_load = self.var.graph_num if self.num_data_load > self.var.graph_num else self.num_data_load
-            if not self.lazy_construction:
-                for i in range(self.num_data_load):
-                    if i%100 == 0:
-                        print(f' {i} graph loaded')
-                    if (self._graphs[i] is None) and (i in self.var.graphs_name):
-                        self.load_data_compressed(i)
-                    else:
-                        self._graphs[i] = self.to_graph(self.raw_data[i])
-                        self.var.graphs_name[i] = f'{self.naming_prepend}_{i}'
-                        self.save_data_compressed(i)
-                self.var.save_to_file(os.path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
-        else:
-            if not self.lazy_construction:
-                save_start = 0
-                self.num_data_load = len(self.raw_data) if self.num_data_load > len(self.raw_data) else self.num_data_load
-                for i in range(self.num_data_load):
-                    if i not in self._graphs:
-                        if i % 100 == 0:
-                            self.save_data_range(save_start, i)
-                            save_start = i
-                            print(f'i: {i}')
-                        self._graphs[i] = self.to_graph(self.raw_data[i])
-                        self.var.graphs_name[i] = f'{self.naming_prepend}_{i}'
-                self.save_data_range(save_start, self.num_data_load)
-            self.var.save_to_file(os.path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
-
-
+        
     def to_graph(self, text: str):
         doc = self.nlp(text)
         # if len(doc) < 2:
@@ -206,19 +174,19 @@ class TagDepTokenGraphConstructor(GraphConstructor):
                 word_general_edge_attr.append(self.settings["general_token_weight"])
                 general_word_edge_index.append([0 , token.i])
                 general_word_edge_attr.append(self.settings["general_token_weight"])
-        data['dep' , 'dep_word' , 'word'].edge_index = torch.transpose(torch.tensor(dep_word_edge_index, dtype=torch.int32) , 0 , 1)
-        data['word' , 'word_dep' , 'dep'].edge_index = torch.transpose(torch.tensor(word_dep_edge_index, dtype=torch.int32) , 0 , 1)
-        data['tag', 'tag_word', 'word'].edge_index = torch.transpose(torch.tensor(tag_word_edge_index, dtype=torch.int32) , 0 , 1)
-        data['word', 'word_tag', 'tag'].edge_index = torch.transpose(torch.tensor(word_tag_edge_index, dtype=torch.int32) , 0 , 1)
-        data['word' , 'seq' , 'word'].edge_index = torch.transpose(torch.tensor(word_word_edge_index, dtype=torch.int32) , 0 , 1)
+        data['dep' , 'dep_word' , 'word'].edge_index = torch.transpose(torch.tensor(dep_word_edge_index, dtype=torch.int32) , 0 , 1) if len(dep_word_edge_index) > 0 else []
+        data['word' , 'word_dep' , 'dep'].edge_index = torch.transpose(torch.tensor(word_dep_edge_index, dtype=torch.int32) , 0 , 1) if len(word_dep_edge_index) > 0 else []
+        data['tag', 'tag_word', 'word'].edge_index = torch.transpose(torch.tensor(tag_word_edge_index, dtype=torch.int32) , 0 , 1) if len(tag_word_edge_index) > 0 else []
+        data['word', 'word_tag', 'tag'].edge_index = torch.transpose(torch.tensor(word_tag_edge_index, dtype=torch.int32) , 0 , 1) if len(word_tag_edge_index) > 0 else []
+        data['word' , 'seq' , 'word'].edge_index = torch.transpose(torch.tensor(word_word_edge_index, dtype=torch.int32) , 0 , 1) if len(word_word_edge_index) > 0 else []
         data['dep' , 'dep_word' , 'word'].edge_attr = torch.tensor(dep_word_edge_attr, dtype=torch.float32)
         data['word' , 'word_dep' , 'dep'].edge_attr = torch.tensor(word_dep_edge_attr, dtype=torch.float32)
         data['tag', 'tag_word', 'word'].edge_attr = torch.tensor(tag_word_edge_attr, dtype=torch.float32)
         data['word', 'word_tag', 'tag'].edge_attr = torch.tensor(word_tag_edge_attr, dtype=torch.float32)
         data['word' , 'seq' , 'word'].edge_attr = torch.tensor(word_word_edge_attr, dtype=torch.float32)
         if use_general_node:
-            data['general' , 'general_word' , 'word'].edge_index = torch.transpose(torch.tensor(general_word_edge_index, dtype=torch.int32) , 0 , 1)
-            data['word' , 'word_general' , 'general'].edge_index = torch.transpose(torch.tensor(word_general_edge_index, dtype=torch.int32) , 0 , 1)
+            data['general' , 'general_word' , 'word'].edge_index = torch.transpose(torch.tensor(general_word_edge_index, dtype=torch.int32) , 0 , 1) if len(general_word_edge_index) > 0 else []
+            data['word' , 'word_general' , 'general'].edge_index = torch.transpose(torch.tensor(word_general_edge_index, dtype=torch.int32) , 0 , 1) if len(word_general_edge_index) > 0 else []
             data['general' , 'general_word' , 'word'].edge_attr = torch.tensor(general_word_edge_attr, dtype=torch.float32)
             data['word' , 'word_general' , 'general'].edge_attr = torch.tensor(word_general_edge_attr, dtype=torch.float32)
         return data
@@ -244,13 +212,6 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         graph['tag'].x = self.__build_initial_tag_vectors(len(self.tags))
         if self.use_general_node:
             graph = self._add_multiple_general_nodes(graph , self.use_sentence_nodes , self.num_general_nodes)
-        # temp 
-        # sentences are not coded - we dont need to create them
-        # fixing temporary edge_attr problem. the below code must be deleted after the data correction
-        if self.use_sentence_nodes:
-            if graph['word' , 'word_sentence' , 'sentence'].edge_attr.shape[0] == 2 * graph['word' , 'word_sentence' , 'sentence'].edge_index.shape[1]:
-                graph['word' , 'word_sentence' , 'sentence'].edge_attr = torch.full((graph['word' , 'word_sentence' , 'sentence'].edge_index.shape[1],) , self.settings['token_sentence_weight'] , dtype=torch.float32)
-                graph['sentence' , 'sentence_word' , 'word'].edge_attr = torch.full((graph['word' , 'word_sentence' , 'sentence'].edge_index.shape[1],) , self.settings['token_sentence_weight'] , dtype=torch.float32)
         return graph
     
     def _add_multiple_general_nodes(self,graph , use_sentence_nodes, num_general_nodes):

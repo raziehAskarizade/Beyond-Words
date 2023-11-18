@@ -15,7 +15,6 @@ from Scripts.Configs.ConfigClass import Config
 from enum import Enum
 from flags import Flags
 from Scripts.Utils.GraphUtilities import reweight_hetero_graph
-
 class TextGraphType(Flags):
     CO_OCCURRENCE = 1
     DEPENDENCY = 2
@@ -27,6 +26,7 @@ class TextGraphType(Flags):
 
 
 class GraphConstructor(ABC):
+
 
     class _Variables(ABC):
         def __init__(self):
@@ -47,25 +47,43 @@ class GraphConstructor(ABC):
             else:
                 raise ValueError("Invalid file content. Unable to recreate the object.")
 
-    def __init__(self, raw_data, variables: _Variables, save_path: str, config: Config, lazy_construction: bool,
+    def __init__(self, raw_data, variables: _Variables, save_path: str, config: Config,
                  load_preprocessed_data: bool, naming_prepend: str = '', use_compression=True, num_data_load=-1):
         
         self.raw_data = raw_data
         self.num_data_load = num_data_load if num_data_load > 0 else len(self.raw_data)
         self.config: Config = config
-        self.lazy_construction = lazy_construction
         self.load_preprocessed_data = load_preprocessed_data
         self.var = variables
         self.save_path = os.path.join(config.root, save_path)
         self.naming_prepend = naming_prepend
         self.use_compression = use_compression
+        self.saving_batch_size = 100
         # self.node_attr, self.node_label, self.edge_index, self.edge_attr, self.edge_label = None, None, None, None, None
         # self.data = Data(x=self.node_attr, y=self.node_label, edge_index=self.edge_index)
         self._graphs: List = [None for r in raw_data]
 
-    @abstractmethod
-    def setup(self):
-        pass
+    def setup(self, load_preprocessed_data = True):
+        self.load_preprocessed_data = True
+        if load_preprocessed_data:
+            self.load_var()
+            self.num_data_load = self.var.graph_num if self.num_data_load > self.var.graph_num else self.num_data_load
+            for i in range(0 , self.num_data_load , self.saving_batch_size):
+                print(f' {i} graph loaded')
+                self.load_data_range(i , i + self.saving_batch_size)
+        else:
+            save_start = 0
+            self.num_data_load = len(self.raw_data) if self.num_data_load > len(self.raw_data) else self.num_data_load
+            for i in range(self.num_data_load):
+                if i % self.saving_batch_size == 0:
+                    if i != 0: 
+                        self.save_data_range(save_start, save_start + self.saving_batch_size)
+                        save_start = i
+                        print(f'i: {i}')
+                self._graphs[i] = self.to_graph(self.raw_data[i])
+                self.var.graphs_name[i] = f'{self.naming_prepend}_{i}'
+            self.save_data_range(save_start, self.num_data_load)
+            self.var.save_to_file(os.path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
 
     @abstractmethod
     def to_graph(self, raw_data):
@@ -154,13 +172,11 @@ class GraphConstructor(ABC):
 
 
     def save_data_range(self, start: int, end: int):
+        data_list = []
         for i in range(start, end):
-            graph = self.to_graph_indexed(self.raw_data[i])
-            try:
-                torch.save(graph.to('cpu'), path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt'))
-            except AttributeError:
-                torch.save(graph, path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt'))
-
+            data_list.append(self.to_graph_indexed(self.raw_data[i]))
+        torch.save(data_list, path.join(self.save_path, f'{start}_{end}_compressed.pt'))
+        
     def load_all_data_comppressed(self):
         self.load_var()
         for i in range(self.var.graph_num):
@@ -169,8 +185,12 @@ class GraphConstructor(ABC):
             self._graphs[i] = self.prepare_loaded_data(torch.load(path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt')))
 
     def load_data_range(self, start: int, end: int):
+        data_list = torch.load(path.join(self.save_path, f'{start}_{end}_compressed.pt'))
+        index = 0
         for i in range(start, end):
-            self._graphs[i] = self.prepare_loaded_data(torch.load(path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt')))
+            self._graphs[i] = self.prepare_loaded_data(data_list[index])
+            index += 1
+        pass    
 
     def save_data_compressed(self , idx: int):
         graph = self.to_graph_indexed(self.raw_data[idx])

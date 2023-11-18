@@ -23,10 +23,10 @@ class DependencyGraphConstructor(GraphConstructor):
             super(DependencyGraphConstructor._Variables, self).__init__()
             self.nlp_pipeline: str = ''
     def __init__(self, texts: List[str], save_path: str, config: Config,
-                 lazy_construction=True, load_preprocessed_data=False, naming_prepend='', use_node_dependencies: bool = False, use_compression=True, num_data_load=-1):
+                load_preprocessed_data=False, naming_prepend='', use_node_dependencies: bool = False, use_compression=True, num_data_load=-1):
 
         super(DependencyGraphConstructor, self)\
-            .__init__(texts, self._Variables(), save_path, config, lazy_construction, load_preprocessed_data,
+            .__init__(texts, self._Variables(), save_path, config, load_preprocessed_data,
                       naming_prepend , use_compression, num_data_load)
         self.settings = {"tokens_dep_weight" : 1,"dep_tokens_weight" : 1, "token_token_weight" : 2}
         self.use_node_dependencies = use_node_dependencies
@@ -35,36 +35,6 @@ class DependencyGraphConstructor(GraphConstructor):
         self.nlp = spacy.load(self.var.nlp_pipeline)
         self.dependencies = self.nlp.get_pipe("parser").labels
         
-    def setup(self, load_preprocessed_data = True):
-        self.load_preprocessed_data = True
-        if load_preprocessed_data:
-            self.load_var()
-            self.num_data_load = self.var.graph_num if self.num_data_load > self.var.graph_num else self.num_data_load
-            if not self.lazy_construction:
-                for i in range(self.num_data_load):
-                    if i%100 == 0:
-                        print(f' {i} graph loaded')
-                    if (self._graphs[i] is None) and (i in self.var.graphs_name):
-                        self.load_data_compressed(i)
-                    else:
-                        self._graphs[i] = self.to_graph(self.raw_data[i])
-                        self.var.graphs_name[i] = f'{self.naming_prepend}_{i}'
-                        self.save_data_compressed(i)
-                self.var.save_to_file(os.path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
-        else:
-            if not self.lazy_construction:
-                save_start = 0
-                self.num_data_load = len(self.raw_data) if self.num_data_load > len(self.raw_data) else self.num_data_load
-                for i in range(self.num_data_load):
-                    if i not in self._graphs:
-                        if i % 100 == 0:
-                            self.save_data_range(save_start, i)
-                            save_start = i
-                            print(f'i: {i}')
-                        self._graphs[i] = self.to_graph(self.raw_data[i])
-                        self.var.graphs_name[i] = f'{self.naming_prepend}_{i}'
-                self.save_data_range(save_start, self.num_data_load)
-            self.var.save_to_file(os.path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
     def to_graph(self, text: str):
         doc = self.nlp(text)
         if len(doc) < 2:
@@ -158,10 +128,10 @@ class DependencyGraphConstructor(GraphConstructor):
                 word_word_edge_attr.append(self.settings["token_token_weight"])
                 word_word_edge_index.append([token.i + 1 , token.i])
                 word_word_edge_attr.append(self.settings["token_token_weight"])
-        data['dep' , 'dep_word' , 'word'].edge_index = torch.transpose(torch.tensor(dep_word_edge_index, dtype=torch.int32) , 0 , 1)
-        data['word' , 'word_dep' , 'dep'].edge_index = torch.transpose(torch.tensor(word_dep_edge_index, dtype=torch.int32) , 0 , 1)
-        data['word' , 'seq' , 'word'].edge_index = torch.transpose(torch.tensor(word_word_edge_index, dtype=torch.int32) , 0 , 1)
-        data['dep' , 'dep_word' , 'word'].edge_attr = torch.tensor(dep_word_edge_attr, dtype=torch.float32)
+        data['dep' , 'dep_word' , 'word'].edge_index = torch.transpose(torch.tensor(dep_word_edge_index, dtype=torch.int32) , 0 , 1) if len(dep_word_edge_index) > 0 else []
+        data['word' , 'word_dep' , 'dep'].edge_index = torch.transpose(torch.tensor(word_dep_edge_index, dtype=torch.int32) , 0 , 1) if len(word_dep_edge_index) > 0 else []
+        data['word' , 'seq' , 'word'].edge_index = torch.transpose(torch.tensor(word_word_edge_index, dtype=torch.int32) , 0 , 1) if len(word_word_edge_index) > 0 else []
+        data['dep' , 'dep_word' , 'word'].edge_attr = torch.tensor(dep_word_edge_attr, dtype=torch.float32) 
         data['word' , 'word_dep' , 'dep'].edge_attr = torch.tensor(word_dep_edge_attr, dtype=torch.float32)
         data['word' , 'seq' , 'word'].edge_attr = torch.tensor(word_word_edge_attr, dtype=torch.float32)
         return data
