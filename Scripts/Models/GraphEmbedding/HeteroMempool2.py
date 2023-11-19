@@ -26,13 +26,11 @@ class HeteroMempool2(torch.nn.Module):
         
         self.pooling_node_types: Dict[str, int] = pooling_node_types
         
-        self.hetero_models = ModuleList()
-        self.hetero_models.add_module(f'DeepGraphNodeEmbedding1_{0}', 
-                                        HeteroDeepGraphNodeEmbedding1(300, 128, metadata, 128, dropout=0.2))
+        self.hetero_models = [HeteroDeepGraphNodeEmbedding1(300, 128, metadata, 128, dropout=0.2)]
         for i in range(1, self.node_embedding_layer):
-            self.hetero_models.add_module(f'DeepGraphNodeEmbedding1_{i}', 
-                                            HeteroDeepGraphNodeEmbedding1(128, 128, metadata, 128, dropout=0.2))
+            self.hetero_models.append(HeteroDeepGraphNodeEmbedding1(128, 128, metadata, 128, dropout=0.2, has_dep=True, has_tag=True))
             
+        self.hetero_models = ModuleList(self.hetero_models)
         
         self.num_clusters = num_clusters
         self.mem_pools = ModuleDict()
@@ -49,9 +47,13 @@ class HeteroMempool2(torch.nn.Module):
         self.output_layer = Linear(64, self.num_out_features)
 
     def forward(self, x: HeteroData) -> Tensor:
+        x_clone = HeteroData()
+        x_clone.x_dict = x.x_dict
+        x_clone.edge_attr_dict = x.edge_attr_dict
+        x_clone.edge_index_dict = x.edge_index_dict
         for i in range(self.node_embedding_layer):
-            x_out_gat, x_out_encoder = self.hetero_model(x)
-            x.x_dict = x_out_gat
+            x_out_gat, x_out_encoder = self.hetero_models[i](x_clone)
+            x_clone.x_dict = x_out_gat
             
         x_pools = []
         for key in self.pooling_node_types:
