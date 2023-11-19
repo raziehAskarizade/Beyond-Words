@@ -188,6 +188,7 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         if TextGraphType.SEQUENTIAL in graph_type:
             graph_constructors[TextGraphType.SEQUENTIAL] = self.__get_sequential_graph()
             graph_type = graph_type - TextGraphType.SEQUENTIAL
+            
         if TextGraphType.SENTIMENT in graph_type:
             graph_constructors[TextGraphType.SENTIMENT] = self.__get_sentiment_graph()
             graph_type = graph_type - TextGraphType.SENTIMENT

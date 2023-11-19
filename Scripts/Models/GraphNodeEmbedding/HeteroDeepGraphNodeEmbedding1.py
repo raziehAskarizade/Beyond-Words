@@ -79,9 +79,9 @@ class HeteroDeepGraphNodeEmbedding1(torch.nn.Module):
 
     def preprocess_data(self, x):
         x_dict = {key: x.x_dict[key] for key in x.x_dict}
-        if self.has_dep:
+        if self.has_dep and x_dict['dep'].ndim==1:
             x_dict['dep'] = self.dep_embedding(x_dict['dep'])
-        if self.has_tag:
+        if self.has_tag and x_dict['tag'].ndim==1:
             x_dict['tag'] = self.tag_embedding(x_dict['tag'])
 
         edge_attr_dict = x.edge_attr_dict

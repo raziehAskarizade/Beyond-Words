@@ -2,7 +2,7 @@
 from torch.utils.data import Dataset
 from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor
 
-
+  
 class GraphConstructorDataset(Dataset):
 
     def __init__(self, graph_constructor: GraphConstructor, graph_labels):
