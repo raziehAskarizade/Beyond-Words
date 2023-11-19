@@ -76,12 +76,12 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
             word_sentence_edge_attr.append(self.settings['token_sentence_weight'])
             sentence_word_edge_attr.append(self.settings['token_sentence_weight'])
         if self.use_general_node:
-            data['general' , 'general_sentence' , 'sentence'].edge_index = torch.transpose(torch.tensor(general_sentence_edge_index, dtype=torch.int32) , 0 , 1) if len(general_sentence_edge_index) > 0 else []
-            data['sentence' , 'sentence_general' , 'general'].edge_index = torch.transpose(torch.tensor(sentence_general_edge_index, dtype=torch.int32) , 0 , 1) if len(sentence_general_edge_index) > 0 else []
+            data['general' , 'general_sentence' , 'sentence'].edge_index = torch.transpose(torch.tensor(general_sentence_edge_index, dtype=torch.int32) , 0 , 1) if len(general_sentence_edge_index) > 0 else [[],[]]
+            data['sentence' , 'sentence_general' , 'general'].edge_index = torch.transpose(torch.tensor(sentence_general_edge_index, dtype=torch.int32) , 0 , 1) if len(sentence_general_edge_index) > 0 else [[],[]]
             data['general' , 'general_sentence' , 'sentence'].edge_attr = torch.tensor(general_sentence_edge_attr, dtype=torch.float32)
             data['sentence' , 'sentence_general' , 'general'].edge_attr = torch.tensor(sentence_general_edge_attr, dtype=torch.float32)
-        data['word' , 'word_sentence' , 'sentence'].edge_index = torch.transpose(torch.tensor(word_sentence_edge_index, dtype=torch.int32) , 0 , 1) if len(word_sentence_edge_index) > 0 else []
-        data['sentence' , 'sentence_word' , 'word'].edge_index = torch.transpose(torch.tensor(sentence_word_edge_index, dtype=torch.int32) , 0 , 1) if len(sentence_word_edge_index) > 0 else []
+        data['word' , 'word_sentence' , 'sentence'].edge_index = torch.transpose(torch.tensor(word_sentence_edge_index, dtype=torch.int32) , 0 , 1) if len(word_sentence_edge_index) > 0 else [[],[]]
+        data['sentence' , 'sentence_word' , 'word'].edge_index = torch.transpose(torch.tensor(sentence_word_edge_index, dtype=torch.int32) , 0 , 1) if len(sentence_word_edge_index) > 0 else [[],[]]
         data['word' , 'seq' , 'word'].edge_index = sequential_data.edge_index
         data['word' , 'word_sentence' , 'sentence'].edge_attr = torch.tensor(word_sentence_edge_attr, dtype=torch.float32)
         data['sentence' , 'sentence_word' , 'word'].edge_attr = torch.tensor(sentence_word_edge_attr, dtype=torch.float32)
@@ -102,6 +102,9 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
         graph['word'].x = words
         if self.use_general_node:
             graph = self._add_multiple_general_nodes(graph , True , self.num_general_nodes)
+        for t in graph.edge_types:
+            if len(graph[t].edge_index) == 0:
+                graph[i].edge_index = [[],[]]
         return graph
     
 
