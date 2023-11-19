@@ -83,12 +83,16 @@ class ClassifierModelManager(ModelManager):
                  give_recall_score: bool=False, 
                  give_hinge_loss: bool=False):
         y_true = []
+        y_pred = []
+        self.lightning_model.eval()
         for X, y in eval_dataloader:
-            y_true.append(y)
+            y_p, _ = self.torch_model(X.to(self.device))
+            y_pred.append((y_p>0).to(torch.int32).detach().to(y.device))
+            y_true.append(y.to(torch.int32))
         y_true = torch.concat(y_true)
-        y_pred = self.trainer.predict(eval_dataloader)
+        y_pred = torch.concat(y_pred)
         if(give_confusion_matrix):
-            print(f'confusion_matrix: {confusion_matrix(y_true, y_pred)}')
+            print(f'confusion_matrix: \n{confusion_matrix(y_true, y_pred)}')
         if(give_report):
             print(classification_report(y_true, y_pred))
         if(give_f1_score):
