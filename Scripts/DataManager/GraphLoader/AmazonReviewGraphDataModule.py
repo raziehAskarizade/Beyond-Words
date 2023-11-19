@@ -222,8 +222,10 @@ class AmazonReviewGraphDataModule(GraphDataModule):
     def __get_sentence_graph(self):
         print(f'self.end_data_load: {self.end_data_load}')
         return SentenceGraphConstructor(self.df['Review'][:self.end_data_load], path.join(self.graphs_path, 'sents_gen'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_general_node=True)
+    
     def __get_sentiment_graph(self):
         print(f'self.end_data_load: {self.end_data_load}')
         return SentimentGraphConstructor(self.df['Review'][:self.end_data_load], path.join(self.graphs_path, 'sentiment'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=True , use_general_node=True)
+    
     def zero_rule_baseline(self):
         return f'zero_rule baseline: {(len(self.labels[self.labels>0.5])* 100.0 / len(self.labels))  : .2f}%'

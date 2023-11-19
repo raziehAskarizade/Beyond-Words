@@ -7,7 +7,7 @@ import lightning as L
 from lightning.pytorch.callbacks import Callback, ModelCheckpoint, EarlyStopping
 from lightning.pytorch.loggers import Logger, CSVLogger
 from lightning.pytorch.tuner import Tuner
-
+from typing import List
 
 class ModelManager(ABC):
 
@@ -94,3 +94,25 @@ class ModelManager(ABC):
     @abstractmethod
     def plot_csv_logger(self, loss_names, eval_names):
         pass
+
+    # def find_best_settings(data_manager,
+    #                        lrs: List[float]=[0.001], dropouts: List[float]=[0.2], 
+    #                        weight_decays: List[float]=[0.00055], emb_factors: List[float]=[0.1], 
+    #                        batch_sizes: List[int]=[128], log_name='find_best_settings'):
+    #     for lr in lrs:
+    #         for dropout in dropouts:
+    #             for wd in weight_decays:
+    #                 for emb_factor in emb_factors:
+    #                     for bs in batch_sizes:
+    #                         data_manager.update_batch_size(bs)
+    #                         torch_model = HeteroGcnGatModel1(300, 1, X1.metadata(), 128, dropout=dropout)
+    #                         lightning_model = HeteroBinaryLightningModel(torch_model,
+    #                                         torch.optim.Adam(torch_model.parameters(), lr=lr, weight_decay=wd),
+    #                                             loss_func=HeteroLoss1(exception_keys='word', enc_factor=emb_factor),
+    #                                             learning_rate=lr,
+    #                                             batch_size=bs,
+    #                                             user_lr_scheduler=True
+    #                                             ).to(device)
+    #                         model_manager = ClassifierModelManager(torch_model, lightning_model, log_name=log_name, device=device, num_train_epoch=10)
+    #                         model_manager.fit(datamodule=data_manager)
+    #                         model_manager.save_plot_csv_logger(name_prepend=f'{lr}_{dropout}_{wd}_{emb_factor}_{bs}', loss_names=['train_loss', 'val_loss'], eval_names=['train_acc_epoch', 'val_acc_epoch'])

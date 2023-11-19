@@ -9,6 +9,8 @@ from torch_geometric.nn import summary
 from lightning.pytorch.callbacks import Callback, ModelCheckpoint, EarlyStopping
 from os import path
 
+from sklearn.metrics import classification_report, f1_score, accuracy_score, precision_score, recall_score, confusion_matrix, hinge_loss
+
 
 class ClassifierModelManager(ModelManager):
 
@@ -71,3 +73,35 @@ class ClassifierModelManager(ModelManager):
         plt.savefig(acc_png)
         
         plt.close()
+    
+    def evaluate(self, eval_dataloader,
+                 give_confusion_matrix: bool=True, 
+                 give_report: bool=True, 
+                 give_f1_score: bool=False, 
+                 give_accuracy_score: bool=False, 
+                 give_precision_score: bool=False, 
+                 give_recall_score: bool=False, 
+                 give_hinge_loss: bool=False):
+        y_true = []
+        y_pred = []
+        self.lightning_model.eval()
+        for X, y in eval_dataloader:
+            y_p, _ = self.torch_model(X.to(self.device))
+            y_pred.append((y_p>0).to(torch.int32).detach().to(y.device))
+            y_true.append(y.to(torch.int32))
+        y_true = torch.concat(y_true)
+        y_pred = torch.concat(y_pred)
+        if(give_confusion_matrix):
+            print(f'confusion_matrix: \n{confusion_matrix(y_true, y_pred)}')
+        if(give_report):
+            print(classification_report(y_true, y_pred))
+        if(give_f1_score):
+            print(f'f1_score: {f1_score(y_true, y_pred)}')
+        if(give_accuracy_score):
+            print(f'accuracy_score: {accuracy_score(y_true, y_pred)}')
+        if(give_precision_score):
+            print(f'precision_score: {precision_score(y_true, y_pred)}')
+        if(give_recall_score):
+            print(f'recall_score: {recall_score(y_true, y_pred)}')
+        if(give_hinge_loss):
+            print(f'hinge_loss: {hinge_loss(y_true, y_pred)}')
