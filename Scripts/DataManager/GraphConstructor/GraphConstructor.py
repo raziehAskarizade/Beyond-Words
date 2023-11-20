@@ -68,7 +68,6 @@ class GraphConstructor(ABC):
         self.load_preprocessed_data = True
         if load_preprocessed_data:
             self.load_var()
-            self.end_data_load = self.var.graph_num if self.end_data_load > self.var.graph_num else self.end_data_load
             for i in tqdm(range(self.start_data_load , self.end_data_load , self.saving_batch_size), desc =" Loding Graphs From File "):
                 self.load_data_range(i , i + self.saving_batch_size)
         else:

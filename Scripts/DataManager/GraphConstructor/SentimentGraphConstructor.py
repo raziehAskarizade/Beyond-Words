@@ -66,11 +66,10 @@ class SentimentGraphConstructor(TagDepTokenGraphConstructor):
                 sentiment_word_edge_index.append([0, token.i])
                 word_sentiment_edge_attr.append(abs(token._.blob.polarity))
                 sentiment_word_edge_attr.append(abs(token._.blob.polarity))
-        if len(word_sentiment_edge_index) > 0:
-            data['word' , 'word_sentiment' , 'sentiment'].edge_index = torch.transpose(torch.tensor(word_sentiment_edge_index, dtype=torch.int32) , 0 , 1) if len(word_sentiment_edge_index) > 0 else [[],[]]
-            data['sentiment' , 'sentiment_word' , 'word'].edge_index = torch.transpose(torch.tensor(sentiment_word_edge_index, dtype=torch.int32) , 0 , 1) if len(sentiment_word_edge_index) > 0 else [[],[]]
-            data['word' , 'word_sentiment' , 'sentiment'].edge_attr = torch.tensor(word_sentiment_edge_attr, dtype=torch.float32)
-            data['sentiment' , 'sentiment_word' , 'word'].edge_attr = torch.tensor(sentiment_word_edge_attr, dtype=torch.float32)
+        data['word' , 'word_sentiment' , 'sentiment'].edge_index = torch.transpose(torch.tensor(word_sentiment_edge_index, dtype=torch.int32) , 0 , 1) if len(word_sentiment_edge_index) > 0 else torch.tensor([[],[]] , dtype=torch.int32)
+        data['sentiment' , 'sentiment_word' , 'word'].edge_index = torch.transpose(torch.tensor(sentiment_word_edge_index, dtype=torch.int32) , 0 , 1) if len(sentiment_word_edge_index) > 0 else torch.tensor([[],[]] , dtype=torch.int32)
+        data['word' , 'word_sentiment' , 'sentiment'].edge_attr = torch.tensor(word_sentiment_edge_attr, dtype=torch.float32)
+        data['sentiment' , 'sentiment_word' , 'word'].edge_attr = torch.tensor(sentiment_word_edge_attr, dtype=torch.float32)
         return data
                     
     def to_graph_indexed(self, text: str):
@@ -90,7 +89,8 @@ class SentimentGraphConstructor(TagDepTokenGraphConstructor):
         graph['sentiment'].x = self._build_initial_sentiment_vector()
         for t in graph.edge_types:
             if len(graph[t].edge_index) == 0:
-                graph[i].edge_index = [[],[]]
+                graph[i].edge_index = torch.tensor([[],[]] , dtype=torch.int32)
+                print(torch.tensor([[],[]] , dtype=torch.int32))
         return graph
     
 

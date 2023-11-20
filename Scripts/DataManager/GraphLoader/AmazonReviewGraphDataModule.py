@@ -71,7 +71,7 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         self.df.index = np.arange(0, self.end_data_load)
         # activate one line below
 
-        labels = self.df['Polarity'][:self.end_data_load]
+        labels = self.df['Polarity'][self.start_data_load:self.end_data_load]
         labels = labels.apply(lambda p: 0 if p == 1 else 1).to_numpy()
         labels = torch.from_numpy(labels)
         self.labels = labels.to(torch.float32).view(-1, 1).to(self.device)
