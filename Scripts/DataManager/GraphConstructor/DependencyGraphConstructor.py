@@ -128,9 +128,9 @@ class DependencyGraphConstructor(GraphConstructor):
                 word_word_edge_attr.append(self.settings["token_token_weight"])
                 word_word_edge_index.append([token.i + 1 , token.i])
                 word_word_edge_attr.append(self.settings["token_token_weight"])
-        data['dep' , 'dep_word' , 'word'].edge_index = torch.transpose(torch.tensor(dep_word_edge_index, dtype=torch.int32) , 0 , 1) if len(dep_word_edge_index) > 0 else [[],[]]
-        data['word' , 'word_dep' , 'dep'].edge_index = torch.transpose(torch.tensor(word_dep_edge_index, dtype=torch.int32) , 0 , 1) if len(word_dep_edge_index) > 0 else [[],[]]
-        data['word' , 'seq' , 'word'].edge_index = torch.transpose(torch.tensor(word_word_edge_index, dtype=torch.int32) , 0 , 1) if len(word_word_edge_index) > 0 else [[],[]]
+        data['dep' , 'dep_word' , 'word'].edge_index = torch.transpose(torch.tensor(dep_word_edge_index, dtype=torch.int32) , 0 , 1) if len(dep_word_edge_index) > 0 else torch.tensor([[],[]] , dtype=torch.int32)
+        data['word' , 'word_dep' , 'dep'].edge_index = torch.transpose(torch.tensor(word_dep_edge_index, dtype=torch.int32) , 0 , 1) if len(word_dep_edge_index) > 0 else torch.tensor([[],[]] , dtype=torch.int32)
+        data['word' , 'seq' , 'word'].edge_index = torch.transpose(torch.tensor(word_word_edge_index, dtype=torch.int32) , 0 , 1) if len(word_word_edge_index) > 0 else torch.tensor([[],[]] , dtype=torch.int32)
         data['dep' , 'dep_word' , 'word'].edge_attr = torch.tensor(dep_word_edge_attr, dtype=torch.float32) 
         data['word' , 'word_dep' , 'dep'].edge_attr = torch.tensor(word_dep_edge_attr, dtype=torch.float32)
         data['word' , 'seq' , 'word'].edge_attr = torch.tensor(word_word_edge_attr, dtype=torch.float32)
@@ -163,7 +163,7 @@ class DependencyGraphConstructor(GraphConstructor):
             graph.x = words
         for t in graph.edge_types:
             if len(graph[t].edge_index) == 0:
-                graph[i].edge_index = [[],[]]
+                graph[i].edge_index = torch.tensor([[],[]] , dtype=torch.int32)
         return graph
         
 

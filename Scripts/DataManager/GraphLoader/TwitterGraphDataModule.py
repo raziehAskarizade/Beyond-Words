@@ -39,7 +39,7 @@ class TwitterGraphDataModule(GraphDataModule):
         self.drop_last = drop_last
         self.graph_type = graph_type
         self.graphs_path = graphs_path if graphs_path != '' else 'data/GraphData/Sentiment140'
-        self.data_path = 'data/Sentiment140/sentiment140.csv' if data_path == '' else data_path
+        self.data_path = 'data/Sentiment140/sentiment140-balanced.csv' if data_path == '' else data_path
         self.labels = None
         self.dataset = None
         self.shuffle = shuffle
@@ -51,21 +51,21 @@ class TwitterGraphDataModule(GraphDataModule):
         self.df = pd.read_csv(
             path.join(self.config.root, self.data_path) , encoding='latin-1')
 
-        self.df.columns = ['Polarity', 'Time', 'Date', 'Query', 'User' , 'Tweet']
         self.df = self.df[['Polarity', 'Tweet']]
         self.end_data_load = self.end_data_load if self.end_data_load > 0 else self.df.shape[0]
         self.end_data_load = self.end_data_load if self.end_data_load < self.df.shape[0] else self.df.shape[0]
         # removing tweets less than 3 words
-        self.df = self.df[self.df['Tweet'].str.split().str.len().gt(2)]  
+        # self.df = self.df[self.df['Tweet'].str.split().str.len().gt(2)]  
         # balancing the dataset
-        g = self.df.groupby('Polarity')
-        self.df = g.apply(lambda x: x.sample(self.end_data_load if self.end_data_load > 0 else g.size().min()).reset_index(drop=True))
-        self.df = self.df.sample(frac=1 , random_state=1).reset_index(drop=True) # using seed in shuffling
+        # g = self.df.groupby('Polarity')
+        # self.df = g.apply(lambda x: x.sample(self.end_data_load if self.end_data_load > 0 else g.size().min()).reset_index(drop=True))
+        # self.df = self.df.sample(frac=1 , random_state=1).reset_index(drop=True) # using seed in shuffling
     
         self.df = self.df.iloc[:self.end_data_load]
-        self.df.index = np.arange(0, self.end_data_load)
+        # self.df.index = np.arange(0, self.end_data_load)
+        # self.df.to_csv('sentiment140-balanced.csv' , index=False)
         # activate one line below
-        labels = self.df['Polarity'][:self.end_data_load]
+        labels = self.df['Polarity'][self.start_data_load:self.end_data_load]
         labels = labels.apply(lambda p: 0 if p == 0 else 1).to_numpy()
         labels = torch.from_numpy(labels)
         self.labels = labels.to(torch.float32).view(-1, 1).to(self.device)
@@ -189,34 +189,26 @@ class TwitterGraphDataModule(GraphDataModule):
         return graph_constructors
 
     def __get_co_occurrence_graph(self):
-        print(f'self.end_data_load: {self.end_data_load}')
         return CoOccurrenceGraphConstructor(self.df['Tweet'][:self.end_data_load], path.join(self.graphs_path, '140_co_occ'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load)
     
     def __get_dependency_graph(self):
-        print(f'self.end_data_load: {self.end_data_load}')
         return DependencyGraphConstructor(self.df['Tweet'][:self.end_data_load], path.join(self.graphs_path, '140_dep'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load , use_node_dependencies=True)
     
     def __get_sequential_graph(self):
-        print(f'self.end_data_load: {self.end_data_load}')
         return SequentialGraphConstructor(self.df['Tweet'][:self.end_data_load], path.join(self.graphs_path, '140_seq_gen'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load , use_general_node=True)
     
     def __get_dep_and_tag_graph(self):
-        print(f'self.end_data_load: {self.end_data_load}')
         return TagDepTokenGraphConstructor(self.df['Tweet'][:self.end_data_load], path.join(self.graphs_path, '140_dep_and_tag'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=False , use_general_node=True)
     
     def __get_tags_graph(self):
-        print(f'self.end_data_load: {self.end_data_load}')
         return TagsGraphConstructor(self.df['Tweet'][:self.end_data_load], path.join(self.graphs_path, '140_tags'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load)
     
     def __get_full_graph(self):
-        print(f'self.end_data_load: {self.end_data_load}')
         return TagDepTokenGraphConstructor(self.df['Tweet'][:self.end_data_load], path.join(self.graphs_path, '140_full'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=True , use_general_node=True)
     
     def __get_sentence_graph(self):
-        print(f'self.end_data_load: {self.end_data_load}')
         return SentenceGraphConstructor(self.df['Tweet'][:self.end_data_load], path.join(self.graphs_path, '140_sents_gen'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_general_node=True)
     def __get_sentiment_graph(self):
-        print(f'self.end_data_load: {self.end_data_load}')
         return SentimentGraphConstructor(self.df['Tweet'][:self.end_data_load], path.join(self.graphs_path, '140_sentiment'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=True , use_general_node=True)
     def zero_rule_baseline(self):
         return f'zero_rule baseline: {(len(self.labels[self.labels>0.5])* 100.0 / len(self.labels))  : .2f}%'
