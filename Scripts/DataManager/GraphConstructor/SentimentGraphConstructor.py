@@ -53,9 +53,6 @@ class SentimentGraphConstructor(TagDepTokenGraphConstructor):
         sentiment_word_edge_attr = []
         word_sentiment_edge_attr = []
         for token in doc:
-            # if token._.blob.polarity != 0:
-            #     print(token._.blob.polarity)
-            #     print(token)
             if token._.blob.polarity > 0:
                 word_sentiment_edge_index.append([token.i, 1])
                 sentiment_word_edge_index.append([1, token.i])
@@ -79,18 +76,11 @@ class SentimentGraphConstructor(TagDepTokenGraphConstructor):
         return self.__create_sentiment_graph(doc , for_compression=True)
     
     def prepare_loaded_data(self, graph):
-        words = torch.zeros((len(graph['word'].x) , self.nlp.vocab.vectors_length), dtype=torch.float32)
-        for i in range(len(graph['word'].x)):
-            if graph['word'].x[i] in self.nlp.vocab.vectors:
-                words[i] = torch.tensor(self.nlp.vocab.vectors[graph['word'].x[i]])
-        graph['word'].x = words
-        if self.use_general_node:
-            graph = self._add_multiple_general_nodes(graph , True , self.num_general_nodes)
+        graph = super(SentimentGraphConstructor , self).prepare_loaded_data(graph)
         graph['sentiment'].x = self._build_initial_sentiment_vector()
         for t in graph.edge_types:
             if len(graph[t].edge_index) == 0:
                 graph[i].edge_index = torch.tensor([[],[]] , dtype=torch.int32)
-                print(torch.tensor([[],[]] , dtype=torch.int32))
         return graph
     
 

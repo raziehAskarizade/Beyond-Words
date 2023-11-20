@@ -189,34 +189,26 @@ class TwitterGraphDataModule(GraphDataModule):
         return graph_constructors
 
     def __get_co_occurrence_graph(self):
-        print(f'self.end_data_load: {self.end_data_load}')
         return CoOccurrenceGraphConstructor(self.df['Tweet'][:self.end_data_load], path.join(self.graphs_path, '140_co_occ'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load)
     
     def __get_dependency_graph(self):
-        print(f'self.end_data_load: {self.end_data_load}')
         return DependencyGraphConstructor(self.df['Tweet'][:self.end_data_load], path.join(self.graphs_path, '140_dep'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load , use_node_dependencies=True)
     
     def __get_sequential_graph(self):
-        print(f'self.end_data_load: {self.end_data_load}')
         return SequentialGraphConstructor(self.df['Tweet'][:self.end_data_load], path.join(self.graphs_path, '140_seq_gen'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load , use_general_node=True)
     
     def __get_dep_and_tag_graph(self):
-        print(f'self.end_data_load: {self.end_data_load}')
         return TagDepTokenGraphConstructor(self.df['Tweet'][:self.end_data_load], path.join(self.graphs_path, '140_dep_and_tag'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=False , use_general_node=True)
     
     def __get_tags_graph(self):
-        print(f'self.end_data_load: {self.end_data_load}')
         return TagsGraphConstructor(self.df['Tweet'][:self.end_data_load], path.join(self.graphs_path, '140_tags'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load)
     
     def __get_full_graph(self):
-        print(f'self.end_data_load: {self.end_data_load}')
         return TagDepTokenGraphConstructor(self.df['Tweet'][:self.end_data_load], path.join(self.graphs_path, '140_full'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=True , use_general_node=True)
     
     def __get_sentence_graph(self):
-        print(f'self.end_data_load: {self.end_data_load}')
         return SentenceGraphConstructor(self.df['Tweet'][:self.end_data_load], path.join(self.graphs_path, '140_sents_gen'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_general_node=True)
     def __get_sentiment_graph(self):
-        print(f'self.end_data_load: {self.end_data_load}')
         return SentimentGraphConstructor(self.df['Tweet'][:self.end_data_load], path.join(self.graphs_path, '140_sentiment'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=True , use_general_node=True)
     def zero_rule_baseline(self):
         return f'zero_rule baseline: {(len(self.labels[self.labels>0.5])* 100.0 / len(self.labels))  : .2f}%'
