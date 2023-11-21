@@ -2,11 +2,8 @@ from typing import List
 import torch
 from torch import nn
 
+from Scripts.Models.LossFunctions.loss_helpers import HeteroLossArgs
 
-class HeteroLossArgs:
-    def __init__(self, y, x_dict):
-        self.y = y
-        self.x_dict = x_dict
         
 class HeteroLoss1(torch.nn.Module):
     def __init__(self, exception_keys: List[str], enc_factor=0.0, *args, **kwargs) -> None:
@@ -16,7 +13,7 @@ class HeteroLoss1(torch.nn.Module):
         self.exception_keys = exception_keys
         self.enc_factor = enc_factor
     
-    def forward(self, out_pred, out_main):
+    def forward(self, out_pred: HeteroLossArgs, out_main: HeteroLossArgs):
         loss = self.bce_loss(out_pred.y, out_main.y)
         x_dict_keys = [k for k in out_pred.x_dict.keys() if k not in self.exception_keys]
         
@@ -39,7 +36,7 @@ class HeteroLoss2(torch.nn.Module):
         self.exception_keys = exception_keys
         self.enc_factor = enc_factor
     
-    def forward(self, out_pred, out_main):
+    def forward(self, out_pred: HeteroLossArgs, out_main: HeteroLossArgs):
         loss = self.bce_loss(out_pred.y, out_main.y)
         x_dict_keys = [k for k in out_pred.x_dict.keys() if k not in self.exception_keys]
         

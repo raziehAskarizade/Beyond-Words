@@ -1,12 +1,9 @@
 from typing import List
 import torch
-from torch import nn
+from torch import nn, tensor
 
+from Scripts.Models.LossFunctions.loss_helpers import HeteroLossArgs
 
-class HeteroLossArgs:
-    def __init__(self, y, x_dict):
-        self.y = y
-        self.x_dict = x_dict
         
 class HeteroLoss1(torch.nn.Module):
     def __init__(self, exception_keys: List[str], enc_factor=0.0, *args, **kwargs) -> None:
@@ -16,7 +13,7 @@ class HeteroLoss1(torch.nn.Module):
         self.exception_keys = exception_keys
         self.enc_factor = enc_factor
     
-    def forward(self, out_pred, out_main, target_query_emb, main_query_emb):
+    def forward(self, out_pred: HeteroLossArgs, out_main: HeteroLossArgs, target_query_emb: tensor, main_query_emb: tensor):
         pred_y = self.location_sigmoid(out_pred.y)
         main_y = self.location_sigmoid(out_main.y)
         
@@ -38,10 +35,10 @@ class HeteroLoss1(torch.nn.Module):
             
         return loss + self.enc_factor * enc_loss
     
-    def similarity(self, query_i, query_j):
+    def similarity(self, query_i: tensor, query_j: tensor):
         return torch.cosine_similarity(query_i, query_j)
     
-    def location_sigmoid(self, pred_rank):
+    def location_sigmoid(self, pred_rank: tensor):
         v = torch.exp(-0.5*(pred_rank-5))
         return 2*torch.tanh(0.5*v)-1
     
