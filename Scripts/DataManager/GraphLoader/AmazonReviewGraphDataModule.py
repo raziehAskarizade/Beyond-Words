@@ -23,7 +23,7 @@ from Scripts.DataManager.Datasets.GraphConstructorDataset import GraphConstructo
 
 class AmazonReviewGraphDataModule(GraphDataModule):
 
-    def __init__(self, config: Config, has_val: bool, has_test: bool, test_size=0.2, val_size=0.2, num_workers=2, drop_last=True, train_data_path='', test_data_path='', graphs_path='', batch_size = 32, device='cpu', shuffle = False,start_data_load=0, end_data_load=-1, graph_type: TextGraphType = TextGraphType.FULL, load_preprocessed_data = True, reweights={}, *args, **kwargs):
+    def __init__(self, config: Config, has_val: bool, has_test: bool, test_size=0.2, val_size=0.2, num_workers=2, drop_last=True, train_data_path='', test_data_path='', graphs_path='', batch_size = 32, device='cpu', shuffle = False,start_data_load=0, end_data_load=-1, graph_type: TextGraphType = TextGraphType.FULL, load_preprocessed_data = True, reweights={},removals=[], *args, **kwargs):
         # Sample reweight [None,None,None,None,[(("word" , "seq" , "word") , 5)]]
         # 5 is weight in above code
         # (("word" , "seq" , "word") , 5)
@@ -36,6 +36,7 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         self.drop_last = drop_last
         self.graph_type = graph_type
         self.reweights = reweights
+        self.removals = removals
         self.graphs_path = graphs_path if graphs_path!='' else 'data/GraphData/AmazonReview'
         self.train_data_path = 'data/Amazon-Review/train_sm.csv' if train_data_path == '' else train_data_path
         self.test_data_path = 'data/Amazon-Review/test_sm.csv' if test_data_path == '' else test_data_path
@@ -90,6 +91,10 @@ class AmazonReviewGraphDataModule(GraphDataModule):
             if key in self.reweights:
                 for r in self.reweights[key]:
                     self.graph_constructors[key].reweight_all(r[0] , r[1])
+            # removals
+            if isinstance(self.graph_constructors[key] , SentimentGraphConstructor):
+                for node_type in self.removals:
+                    self.graph_constructors[key].remove_node_type_from_graphs(node_type) 
             self.dataset[key] = GraphConstructorDataset(self.graph_constructors[key], self.labels)
             self.__train_dataset[key], self.__val_dataset[key], self.__test_dataset[key] =\
                 random_split(self.dataset[key], [1-self.val_size-self.test_size, self.val_size, self.test_size])

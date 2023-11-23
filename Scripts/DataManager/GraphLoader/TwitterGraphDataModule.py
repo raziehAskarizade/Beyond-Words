@@ -22,7 +22,7 @@ from Scripts.DataManager.Datasets.GraphConstructorDataset import GraphConstructo
 
 class TwitterGraphDataModule(GraphDataModule):
 
-    def __init__(self, config: Config, has_val: bool, has_test: bool, test_size=0.2, val_size=0.2, num_workers=2, drop_last=True, data_path='', graphs_path='', batch_size = 32, device='cpu', shuffle = False, start_data_load=0, end_data_load=-1, graph_type: TextGraphType = TextGraphType.FULL, load_preprocessed_data = True, reweights={}, *args, **kwargs):
+    def __init__(self, config: Config, has_val: bool, has_test: bool, test_size=0.2, val_size=0.2, num_workers=2, drop_last=True, data_path='', graphs_path='', batch_size = 32, device='cpu', shuffle = False, start_data_load=0, end_data_load=-1, graph_type: TextGraphType = TextGraphType.FULL, load_preprocessed_data = True, reweights={},removals=[], *args, **kwargs):
         # Sample reweight [None,None,None,None,[(("word" , "seq" , "word") , 5)]]
         # 5 is weight in above code
         # (("word" , "seq" , "word") , 5)
@@ -30,6 +30,7 @@ class TwitterGraphDataModule(GraphDataModule):
             .__init__(config, device, has_val, has_test, test_size, val_size, *args, **kwargs)
 
         self.reweights = reweights
+        self.removals = removals
         self.start_data_load = start_data_load
         self.end_data_load = end_data_load
         self.load_preprocessed_data = load_preprocessed_data
@@ -83,6 +84,10 @@ class TwitterGraphDataModule(GraphDataModule):
             if key in self.reweights:
                 for r in self.reweights[key]:
                     self.graph_constructors[key].reweight_all(r[0] , r[1])
+            # removals
+            if isinstance(self.graph_constructors[key] , SentimentGraphConstructor):
+                for node_type in self.removals:
+                    self.graph_constructors[key].remove_node_type_from_graphs(node_type)    
             self.dataset[key] = GraphConstructorDataset(self.graph_constructors[key], self.labels)
             self.__train_dataset[key], self.__val_dataset[key], self.__test_dataset[key] =\
                 random_split(self.dataset[key], [1-self.val_size-self.test_size, self.val_size, self.test_size])
@@ -210,5 +215,6 @@ class TwitterGraphDataModule(GraphDataModule):
         return SentenceGraphConstructor(self.df['Tweet'][:self.end_data_load], path.join(self.graphs_path, '140_sents_gen'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_general_node=True)
     def __get_sentiment_graph(self):
         return SentimentGraphConstructor(self.df['Tweet'][:self.end_data_load], path.join(self.graphs_path, '140_sentiment'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=True , use_general_node=True)
+
     def zero_rule_baseline(self):
         return f'zero_rule baseline: {(len(self.labels[self.labels>0.5])* 100.0 / len(self.labels))  : .2f}%'
