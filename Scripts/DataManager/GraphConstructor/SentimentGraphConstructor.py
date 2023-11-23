@@ -63,8 +63,8 @@ class SentimentGraphConstructor(TagDepTokenGraphConstructor):
                 sentiment_word_edge_index.append([0, token.i])
                 word_sentiment_edge_attr.append(abs(token._.blob.polarity))
                 sentiment_word_edge_attr.append(abs(token._.blob.polarity))
-        data['word' , 'word_sentiment' , 'sentiment'].edge_index = torch.transpose(torch.tensor(word_sentiment_edge_index, dtype=torch.int32) , 0 , 1) if len(word_sentiment_edge_index) > 0 else torch.tensor([[],[]] , dtype=torch.int32)
-        data['sentiment' , 'sentiment_word' , 'word'].edge_index = torch.transpose(torch.tensor(sentiment_word_edge_index, dtype=torch.int32) , 0 , 1) if len(sentiment_word_edge_index) > 0 else torch.tensor([[],[]] , dtype=torch.int32)
+        data['word' , 'word_sentiment' , 'sentiment'].edge_index = torch.transpose(torch.tensor(word_sentiment_edge_index, dtype=torch.int32) , 0 , 1) if len(word_sentiment_edge_index) > 0 else torch.empty(2, 0, dtype=torch.int32)
+        data['sentiment' , 'sentiment_word' , 'word'].edge_index = torch.transpose(torch.tensor(sentiment_word_edge_index, dtype=torch.int32) , 0 , 1) if len(sentiment_word_edge_index) > 0 else torch.empty(2, 0, dtype=torch.int32)
         data['word' , 'word_sentiment' , 'sentiment'].edge_attr = torch.tensor(word_sentiment_edge_attr, dtype=torch.float32)
         data['sentiment' , 'sentiment_word' , 'word'].edge_attr = torch.tensor(sentiment_word_edge_attr, dtype=torch.float32)
         return data
@@ -79,8 +79,8 @@ class SentimentGraphConstructor(TagDepTokenGraphConstructor):
         graph = super(SentimentGraphConstructor , self).prepare_loaded_data(graph)
         graph['sentiment'].x = self._build_initial_sentiment_vector()
         for t in graph.edge_types:
-            if len(graph[t].edge_index) == 0:
-                graph[i].edge_index = torch.tensor([[],[]] , dtype=torch.int32)
+            if graph[t].edge_index.shape[1] == 0:
+                graph[t].edge_index = torch.empty(2, 0, dtype=torch.int32)
         return graph
     def remove_node_type_from_graphs(self,node_name : str):
         for i in range(len(self._graphs)):
