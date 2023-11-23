@@ -59,10 +59,14 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         self.test_df2 = pd.read_csv(path.join(self.config.root, self.test_data_path2))
         self.train_df.columns = ['Polarity', 'Title', 'Review']
         self.test_df.columns = ['Polarity', 'Title', 'Review']
+        self.train_df['Review'] = self.train_df['Title'].astype(str) + ' ' +  self.train_df['Review'].astype(str)
+        self.test_df['Review'] = self.test_df['Title'].astype(str) + ' ' +  self.test_df['Review'].astype(str)
         self.train_df = self.train_df[['Polarity', 'Review']]
         self.test_df = self.test_df[['Polarity', 'Review']]
         self.train_df2.columns = ['Polarity', 'Title', 'Review']
         self.test_df2.columns = ['Polarity', 'Title', 'Review']
+        self.train_df2['Review'] = self.train_df2['Title'].astype(str) + ' ' +  self.train_df2['Review'].astype(str)
+        self.test_df2['Review'] = self.test_df2['Title'].astype(str) + ' ' +  self.test_df2['Review'].astype(str)
         self.train_df2 = self.train_df2[['Polarity', 'Review']]
         self.test_df2 = self.test_df2[['Polarity', 'Review']]
         self.df = pd.concat([self.train_df, self.test_df,self.train_df2 , self.test_df2])
@@ -71,7 +75,7 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         self.df = self.df.iloc[:self.end_data_load]
         self.df.index = np.arange(0, self.end_data_load)
         # activate one line below
-
+        print(self.df)
         labels = self.df['Polarity'][self.start_data_load:self.end_data_load]
         labels = labels.apply(lambda p: 0 if p == 1 else 1).to_numpy()
         labels = torch.from_numpy(labels)
