@@ -32,7 +32,7 @@ class ClassifierModelManager(ModelManager):
 
     def draw_summary(self, dataloader):
         X, y = next(iter(dataloader))
-        print(summary(self.torch_model, X))
+        print(summary(self.torch_model, X.to(self.device)))
 
     def plot_csv_logger(self, loss_names=['train_loss', 'val_loss'], eval_names=['train_acc', 'val_acc']):
         csv_path = path.join(self.log_dir, self.log_name, f'version_{self.logger.version}', 'metrics.csv')
@@ -86,7 +86,9 @@ class ClassifierModelManager(ModelManager):
         y_pred = []
         self.lightning_model.eval()
         for X, y in eval_dataloader:
-            y_p, _ = self.torch_model(X.to(self.device))
+            y_p = self.torch_model(X.to(self.device))
+            if type(y_p) is tuple:
+                y_p = y_p[0]
             y_pred.append((y_p>0).to(torch.int32).detach().to(y.device))
             y_true.append(y.to(torch.int32))
         y_true = torch.concat(y_true)
