@@ -82,6 +82,15 @@ class SentimentGraphConstructor(TagDepTokenGraphConstructor):
             if len(graph[t].edge_index) == 0:
                 graph[i].edge_index = torch.tensor([[],[]] , dtype=torch.int32)
         return graph
+    def remove_node_type_from_graphs(self,node_name : str):
+        for i in range(len(self._graphs)):
+            if self._graphs[i] is not None:
+                if node_name in self._graphs[i].node_types:
+                    del self._graphs[i][node_name]
+                for edge_type in self._graphs[i].edge_types:
+                    if edge_type[0] == node_name or edge_type[1] == node_name:
+                        del self._graphs[i][edge_type]
+        
     
 
         
