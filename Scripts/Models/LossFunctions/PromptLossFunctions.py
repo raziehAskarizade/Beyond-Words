@@ -5,7 +5,7 @@ from torch import nn, tensor
 from Scripts.Models.LossFunctions.loss_helpers import HeteroLossArgs
 
         
-class HeteroLoss1(torch.nn.Module):
+class PromptLoss1(torch.nn.Module):
     def __init__(self, exception_keys: List[str], enc_factor=0.0, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.bce_loss=  nn.BCEWithLogitsLoss()
