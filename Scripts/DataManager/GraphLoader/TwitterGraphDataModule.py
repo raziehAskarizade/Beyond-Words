@@ -88,7 +88,7 @@ class TwitterGraphDataModule(GraphDataModule):
             if isinstance(self.graph_constructors[key] , SentimentGraphConstructor):
                 for node_type in self.removals:
                     self.graph_constructors[key].remove_node_type_from_graphs(node_type)    
-            self.dataset[key] = GraphConstructorDataset(self.graph_constructors[key], self.labels)
+            self.dataset[key] = GraphConstructorDatasetRanged(self.graph_constructors[key], self.labels , self.start_data_load , self.end_data_load)
             self.__train_dataset[key], self.__val_dataset[key], self.__test_dataset[key] =\
                 random_split(self.dataset[key], [1-self.val_size-self.test_size, self.val_size, self.test_size])
             
