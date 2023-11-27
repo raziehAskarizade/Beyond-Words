@@ -5,13 +5,13 @@ from torch_geometric.nn import Sequential as GSequential
 from torch import nn
 
 
-class HomogeneousDeepGraphEmbedding1(nn.Module):
+class NewModel(nn.Module):
     r"""
     This class is for graph level classification or graph level regression
     """
 
     def __init__(self, input_feature: int, out_features: int, base_hidden_feature: int=256, dropout=0.1, *args, **kwargs):
-        super(HomogeneousDeepGraphEmbedding1, self).__init__(*args, **kwargs)
+        super(NewModel, self).__init__(*args, **kwargs)
         self.input_features = input_feature
         self.num_out_features = out_features
         self.bsh: int = base_hidden_feature
