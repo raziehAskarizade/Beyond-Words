@@ -16,7 +16,7 @@ from Scripts.DataManager.GraphConstructor.SentenceGraphConstructor import Senten
 from Scripts.DataManager.GraphConstructor.SentimentGraphConstructor import SentimentGraphConstructor
 from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor, TextGraphType
 from Scripts.DataManager.GraphLoader.GraphDataModule import GraphDataModule
-from torch.utils.data.dataset import random_split
+from torch.utils.data.dataset import random_split, Subset
 import torch
 from Scripts.DataManager.Datasets.GraphConstructorDataset import GraphConstructorDataset, GraphConstructorDatasetRanged
 
@@ -68,9 +68,15 @@ class AGGraphDataModule(GraphDataModule):
         labels = self.df['Class'][self.start_data_load:self.end_data_load]
         labels = labels.to_numpy()
         labels = torch.from_numpy(labels)
-        self.labels = labels.to(torch.float32).view(-1, 1).to(self.device)
+        self.num_classes = len(torch.unique(labels))
+        self.labels = torch.nn.functional.one_hot((labels-1).to(torch.int64)).to(torch.float32).to(self.device)
+        
+        self.num_data = self.df.shape[0]
+        self.train_range = range(int((1-self.val_size-self.test_size)*self.num_data))
+        self.val_range = range(self.train_range[-1]+1, int((1-self.test_size)*self.num_data))
+        self.test_range = range(self.val_range[-1]+1, self.num_data)
+        
         # graph_constructor = self.graph_constructors[TextGraphType.CO_OCCURRENCE]
-        self.num_classes = len(torch.unique(self.labels))
         
     def load_graphs(self):
         self.graph_constructors = self.__set_graph_constructors(self.graph_type)
@@ -89,9 +95,11 @@ class AGGraphDataModule(GraphDataModule):
                 for node_type in self.removals:
                     self.graph_constructors[key].remove_node_type_from_graphs(node_type) 
             self.dataset[key] = GraphConstructorDatasetRanged(self.graph_constructors[key], self.labels , self.start_data_load , self.end_data_load)
-            self.__train_dataset[key], self.__val_dataset[key], self.__test_dataset[key] =\
-                random_split(self.dataset[key], [1-self.val_size-self.test_size, self.val_size, self.test_size])
             
+            self.__train_dataset[key] = Subset(self.dataset[key], self.train_range)
+            self.__val_dataset[key] = Subset(self.dataset[key], self.val_range)
+            self.__test_dataset[key] = Subset(self.dataset[key], self.test_range)
+                        
             self.__train_dataloader[key] =  DataLoader(self.__train_dataset[key], batch_size=self.batch_size, drop_last=self.drop_last, shuffle=self.shuffle, num_workers=0, persistent_workers=False)
             self.__test_dataloader[key] =  DataLoader(self.__test_dataset[key], batch_size=self.batch_size, num_workers=0, persistent_workers=False)
             self.__val_dataloader[key] =  DataLoader(self.__val_dataset[key], batch_size=self.batch_size, num_workers=0, persistent_workers=False)
@@ -127,8 +135,10 @@ class AGGraphDataModule(GraphDataModule):
     def create_sub_data_loader(self, begin: int, end: int):
         for key in self.graph_constructors:            
             dataset = GraphConstructorDatasetRanged(self.graph_constructors[key], self.labels, begin, end)
-            train_dataset, val_dataset, test_dataset =\
-                random_split(dataset, [1-self.val_size-self.test_size, self.val_size, self.test_size])
+            
+            train_dataset = Subset(dataset, self.train_range)
+            val_dataset = Subset(dataset,  self.val_range)
+            test_dataset= Subset(dataset,  self.test_range)
                 
             self.__train_dataloader[key] =  DataLoader(train_dataset, batch_size=self.batch_size, drop_last=self.drop_last, shuffle=self.shuffle, num_workers=0, persistent_workers=False)
             self.__test_dataloader[key] =  DataLoader(test_dataset, batch_size=self.batch_size, num_workers=0, persistent_workers=False)

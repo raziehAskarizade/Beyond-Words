@@ -1,4 +1,5 @@
 
+import numpy as np
 from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor
 from torch_geometric.data import HeteroData
 from Scripts.Configs.ConfigClass import Config
@@ -64,7 +65,7 @@ class TagDepTokenGraphConstructor(GraphConstructor):
      
     def __create_graph_with_sentences(self , doc , for_compression=False):
         data = self.__create_graph(doc,for_compression,False)
-        sentence_embeddings = [sent.vector for sent in doc.sents]
+        sentence_embeddings = np.array([sent.vector for sent in doc.sents])
         data['sentence'].x = torch.tensor(sentence_embeddings, dtype=torch.float32)
         if self.use_general_node:
             if for_compression:
