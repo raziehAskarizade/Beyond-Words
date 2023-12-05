@@ -9,7 +9,7 @@ from Scripts.Models.BaseModels.HeteroGat import HeteroGat
 from Scripts.Models.BaseModels.HeteroLinear import HeteroLinear
 
 
-class HeteroDeepGraphEmbedding2(torch.nn.Module):
+class HeteroDeepGraphEmbedding3(torch.nn.Module):
     
     def __init__(self,
                  input_feature: int, out_features: int,
@@ -21,7 +21,7 @@ class HeteroDeepGraphEmbedding2(torch.nn.Module):
                  edge_type_weights=-1
                  ):
 
-        super(HeteroDeepGraphEmbedding2, self).__init__()
+        super(HeteroDeepGraphEmbedding3, self).__init__()
         self.input_features = input_feature
         self.num_out_features = out_features
         self.bsh: int = hidden_feature
@@ -40,12 +40,17 @@ class HeteroDeepGraphEmbedding2(torch.nn.Module):
         self.hetero_linear_2 = to_hetero(HeteroLinear(self.bsh, input_feature, dropout, use_batch_norm=True), metadata)
         self.hetero_linear_3 = to_hetero(HeteroLinear(input_feature, input_feature, dropout, use_dropout=False), metadata)
         
-        self.mem_pool = MemPooling(self.bsh, self.bsh, 2, 1)
+        self.mem_pools = []
+        for i in range(self.edge_type_count):
+            self.mem_pools.append(MemPooling(self.bsh, self.bsh, 2, 1))
+        self.mem_pools = torch.nn.ModuleList(self.mem_pools)
         
-        self.linear_1 = Linear(self.bsh, 64)
-        self.linear_2 = Linear(64, 64)
-        self.linear_3 = Linear(64, 64)
-        self.batch_norm_1 = BatchNorm(64)
+        
+        self.linear_1 = Linear(self.bsh*self.num_out_features, self.bsh)
+        self.linear_2 = Linear(self.bsh, self.bsh)
+        self.linear_3 = Linear(self.bsh, 64)
+        self.batch_norm_1 = BatchNorm(self.bsh)
+        self.batch_norm_2 = BatchNorm(64)
         
         self.output_layer = Linear(64, self.num_out_features)
 
@@ -72,13 +77,17 @@ class HeteroDeepGraphEmbedding2(torch.nn.Module):
         x_dict = self.normalize(x_dict, x)
 
         x_dict = self.hetero_gat_3(x_dict, edge_index_dict, edge_attr_dict)
+        x_pools = []
+        for i in range(self.edge_type_count):
+            x_pooled, S = self.mem_pool(x_dict['word'], x['word'].batch)
+            x_pooled = x_pooled.view(x_pooled.shape[0], -1)
+            x_pools.append(x_pooled)
+        x_pools = torch.concat(x_pools, dim=1)
+        print(f'x_pools.shape: {x_pools.shape}')
         
-        x_pooled, S = self.mem_pool(x_dict['word'], x['word'].batch)
-                
-        x_pooled = x_pooled.view(x_pooled.shape[0], -1)
-        x_pooled = F.relu(self.linear_1(x_pooled))
-        x_pooled = F.relu(self.batch_norm_1(self.linear_2(x_pooled)))
-        x_pooled = F.relu(self.linear_3(x_pooled))
+        x_pooled = F.relu(self.batch_norm_1(self.linear_1(x_pooled)))
+        x_pooled = F.relu(self.linear_2(x_pooled))
+        x_pooled = F.relu(self.batch_norm_2(self.linear_3(x_pooled)))
         out = self.output_layer(x_pooled)
         x_dict = self.hetero_linear_2(x_dict)
         x_dict = self.hetero_linear_3(x_dict)

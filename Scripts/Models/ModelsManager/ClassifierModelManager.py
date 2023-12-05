@@ -108,40 +108,69 @@ class ClassifierModelManager(ModelManager):
         if(give_hinge_loss):
             print(f'hinge_loss: {hinge_loss(y_true, y_pred)}')
                 
+    
     def save_evaluation(self, eval_dataloader, name_prepend: str='',
-                 give_confusion_matrix: bool=True, 
-                 give_report: bool=True, 
-                 give_f1_score: bool=False, 
-                 give_accuracy_score: bool=False, 
-                 give_precision_score: bool=False, 
-                 give_recall_score: bool=False, 
-                 give_hinge_loss: bool=False):
+                    give_confusion_matrix: bool=True, 
+                    give_report: bool=True, 
+                    give_f1_score: bool=False, 
+                    give_accuracy_score: bool=False, 
+                    give_precision_score: bool=False, 
+                    give_recall_score: bool=False, 
+                    give_hinge_loss: bool=False,
+                    multi_class: bool=False
+                    ):
+            
+            test_metrics_path = path.join(self.log_dir, self.log_name, f'version_{self.logger.version}', f'{name_prepend}_test_metrics.txt')
+            
+            y_true = []
+            y_pred = []
+            self.lightning_model.eval()
+            self.lightning_model.model.eval()
+            self.torch_model.eval()
+            for X, y in eval_dataloader:
+                self.trainer.model.eval()
+                with torch.no_grad():
+                    y_p = self.trainer.model(X.to(self.device))
+                if type(y_p) is tuple:
+                    y_p = y_p[0]
+                
+                if multi_class:
+                    y_pred.append(y_p.detach().to(y.device))
+                    y_true.append(y)
+                else:
+                    y_pred.append((y_p>0).to(torch.int32).detach().to(y.device))
+                    y_true.append(y.to(torch.int32))
+            y_true = torch.concat(y_true)
+            y_pred = torch.concat(y_pred)
+            if multi_class:
+                y_true_num = torch.argmax(y_true, dim=1)
+                y_pred_num = torch.argmax(y_pred, dim=1)
+            else:
+                y_true_num = y_true
+                y_pred_num = y_pred
+                
+            with open(test_metrics_path, 'at+') as f:
+                if(give_confusion_matrix):
+                    print(f'confusion_matrix: \n{confusion_matrix(y_true_num, y_pred_num)}', file=f)
+                if(give_report):
+                    print(classification_report(y_true_num, y_pred_num), file=f)
+                if(give_f1_score):
+                    if multi_class:
+                        print(f'f1_score: {f1_score(y_true_num, y_pred_num, average=None)}', file=f)
+                    else:
+                        print(f'f1_score: {f1_score(y_true_num, y_pred_num)}', file=f)
+                if(give_accuracy_score):
+                    print(f'accuracy_score: {accuracy_score(y_true_num, y_pred_num)}', file=f)
+                if(give_precision_score):
+                    if multi_class:
+                        print(f'f1_score: {precision_score(y_true_num, y_pred_num, average=None)}', file=f)
+                    else:
+                        print(f'f1_score: {precision_score(y_true_num, y_pred_num)}', file=f)
+                if(give_recall_score):
+                    if multi_class:
+                        print(f'f1_score: {recall_score(y_true_num, y_pred_num, average=None)}', file=f)
+                    else:
+                        print(f'f1_score: {recall_score(y_true_num, y_pred_num)}', file=f)
+                if(give_hinge_loss):
+                    print(f'hinge_loss: {hinge_loss(y_true_num, y_pred)}', file=f)
         
-        test_metrics_path = path.join(self.log_dir, self.log_name, f'version_{self.logger.version}', f'{name_prepend}_test_metrics.txt')
-        
-        y_true = []
-        y_pred = []
-        self.lightning_model.eval()
-        for X, y in eval_dataloader:
-            y_p = self.torch_model(X.to(self.device))
-            if type(y_p) is tuple:
-                y_p = y_p[0]
-            y_pred.append((y_p>0).to(torch.int32).detach().to(y.device))
-            y_true.append(y.to(torch.int32))
-        y_true = torch.concat(y_true)
-        y_pred = torch.concat(y_pred)
-        with open(test_metrics_path, 'at+') as f:
-            if(give_confusion_matrix):
-                print(f'confusion_matrix: \n{confusion_matrix(y_true, y_pred)}', file=f)
-            if(give_report):
-                print(classification_report(y_true, y_pred), file=f)
-            if(give_f1_score):
-                print(f'f1_score: {f1_score(y_true, y_pred)}', file=f)
-            if(give_accuracy_score):
-                print(f'accuracy_score: {accuracy_score(y_true, y_pred)}', file=f)
-            if(give_precision_score):
-                print(f'precision_score: {precision_score(y_true, y_pred)}', file=f)
-            if(give_recall_score):
-                print(f'recall_score: {recall_score(y_true, y_pred)}', file=f)
-            if(give_hinge_loss):
-                print(f'hinge_loss: {hinge_loss(y_true, y_pred)}', file=f)

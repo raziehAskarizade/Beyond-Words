@@ -24,11 +24,11 @@ class GraphConstructorDatasetRanged(Dataset):
         self.graph_labels = graph_labels
         self.begin = begin
         self.end = end
-        self.len = (end if end < len(self.graph_labels) else len(self.graph_labels)) - begin
+        self.len = len(self.graph_labels)
 
     def __getitem__(self, index):
         x = self.graph_constructor.get_graph(self.begin + index)
-        y = self.graph_labels[self.begin + index]
+        y = self.graph_labels[index]
         return x, y
 
     def __len__(self):

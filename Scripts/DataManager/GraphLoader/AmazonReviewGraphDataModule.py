@@ -104,6 +104,7 @@ class AmazonReviewGraphDataModule(GraphDataModule):
                 for node_type in self.removals:
                     self.graph_constructors[key].remove_node_type_from_graphs(node_type) 
             self.dataset[key] = GraphConstructorDatasetRanged(self.graph_constructors[key], self.labels , self.start_data_load , self.end_data_load)
+            
             self.__train_dataset[key] = Subset(self.dataset[key], self.train_range)
             self.__val_dataset[key] = Subset(self.dataset[key], self.val_range)
             self.__test_dataset[key] = Subset(self.dataset[key], self.test_range)

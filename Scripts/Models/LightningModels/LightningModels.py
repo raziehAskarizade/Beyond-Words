@@ -5,7 +5,7 @@ from pytorch_lightning.utilities.types import OptimizerLRScheduler
 import lightning as L
 from abc import abstractmethod
 
-from Scripts.Models.LossFunctions.HeteroLossFunctions import HeteroLossArgs, HeteroLoss1
+from Scripts.Models.LossFunctions.HeteroLossFunctions import HeteroLossArgs, HeteroLoss1, MulticlassHeteroLoss1
 
 class BaseLightningModel(L.LightningModule):
 
@@ -35,7 +35,10 @@ class BaseLightningModel(L.LightningModule):
         data = data.to(self.device)
         labels = labels.to(self.device)
         out_features = self(data)
+        if type(out_features) is tuple:
+            out_features = out_features[0]
         loss = self.loss_func(out_features, labels.view(out_features.shape))
+        
         self.log('train_loss', loss, prog_bar=True, batch_size=self.batch_size, on_epoch=True, on_step=True)
         return loss, out_features
 
@@ -44,6 +47,8 @@ class BaseLightningModel(L.LightningModule):
         data = data.to(self.device)
         labels = labels.to(self.device)
         out_features = self(data)
+        if type(out_features) is tuple:
+            out_features = out_features[0]
         loss = self.loss_func(out_features, labels.view(out_features.shape))
         self.log('val_loss', loss, prog_bar=True, batch_size=self.batch_size, on_epoch=True, on_step=True)
         return out_features
@@ -123,23 +128,21 @@ class BinaryLightningModel(BaseLightningModel):
 
 class MultiClassLightningModel(BaseLightningModel):
 
-    def __init__(self, model, optimizer=None, loss_func=None, lr=0.01, batch_size=64, user_lr_scheduler=False, min_lr=0.0):
+    def __init__(self, model, num_classes, optimizer=None, loss_func=None, lr=0.01, batch_size=64, user_lr_scheduler=False, min_lr=0.0):
         super(MultiClassLightningModel, self).__init__(model, optimizer, loss_func, lr, batch_size=batch_size, user_lr_scheduler=user_lr_scheduler, min_lr=min_lr)
-        self.train_acc = torchmetrics.Accuracy(task="multiclass")
-        self.val_acc = torchmetrics.Accuracy(task="multiclass")
-        self.test_acc = torchmetrics.Accuracy(task="multiclass")
+        self.train_acc = torchmetrics.Accuracy(task="multiclass", num_classes=num_classes)
+        self.val_acc = torchmetrics.Accuracy(task="multiclass", num_classes=num_classes)
+        self.test_acc = torchmetrics.Accuracy(task="multiclass", num_classes=num_classes)
 
     def training_step(self, data_batch, *args, **kwargs):
         loss, out_features = super(MultiClassLightningModel, self).training_step(data_batch, *args, **kwargs)
-        predicted_labels = torch.argmax(out_features, dim=1)
-        self.train_acc(predicted_labels, data_batch[1].view(predicted_labels.shape))
+        self.train_acc(torch.argmax(out_features, dim=1), torch.argmax(data_batch[1], dim=1))
         self.log('train_acc', self.train_acc, prog_bar=True, on_epoch=True, on_step=False)
         return loss
 
     def validation_step(self, data_batch, *args, **kwargs):
         out_features = super(MultiClassLightningModel, self).validation_step(data_batch, *args, **kwargs)
-        predicted_labels = out_features if out_features.shape[1] < 2 else torch.argmax(out_features, dim=1)
-        self.val_acc(predicted_labels, out_features.view(predicted_labels.shape))
+        self.val_acc(torch.argmax(out_features, dim=1), torch.argmax(data_batch[1], dim=1))
         self.log('val_acc', self.val_acc, prog_bar=True, on_epoch=True, on_step=False)
 
     def _get_loss_func(self, loss_func):
@@ -149,11 +152,11 @@ class MultiClassLightningModel(BaseLightningModel):
 
 class MultiLabelLightningModel(BaseLightningModel):
 
-    def __init__(self, model, optimizer=None, loss_func=None, lr=0.01, batch_size=64, user_lr_scheduler=False, min_lr=0.0):
-        super(MultiLabelLightningModel, self).__init__(model, optimizer, loss_func, lr, batch_size=batch_size, user_lr_scheduler=user_lr_scheduler, min_lr=min_lr)
-        self.train_acc = torchmetrics.Accuracy(task="multilabel")
-        self.val_acc = torchmetrics.Accuracy(task="multilabel")
-        self.test_acc = torchmetrics.Accuracy(task="multilabel")
+    def __init__(self, model, num_labels, optimizer=None, loss_func=None, lr=0.01, learning_rate=0.01, batch_size=64, user_lr_scheduler=False, min_lr=0.0):
+        super(MultiLabelLightningModel, self).__init__(model, optimizer, loss_func, lr, learning_rate, batch_size=batch_size, user_lr_scheduler=user_lr_scheduler, min_lr=min_lr)
+        self.train_acc = torchmetrics.Accuracy(task="multilabel", num_labels=num_labels)
+        self.val_acc = torchmetrics.Accuracy(task="multilabel", num_labels=num_labels)
+        self.test_acc = torchmetrics.Accuracy(task="multilabel", num_labels=num_labels)
 
     def training_step(self, data_batch, *args, **kwargs):
         loss, out_features = super(MultiLabelLightningModel, self).training_step(data_batch, *args, **kwargs)
@@ -213,3 +216,46 @@ class HeteroBinaryLightningModel(BaseLightningModel):
         return loss_func \
             if loss_func is not None else \
             torch.nn.BCELoss()
+
+
+class HeteroMultiClassLightningModel(BaseLightningModel):
+
+    def __init__(self, model, num_classes, optimizer=None, loss_func=None, learning_rate=0.01, batch_size=64, lr_scheduler=None, user_lr_scheduler=False, min_lr=0.0):
+        super(HeteroMultiClassLightningModel, self).__init__(model, optimizer, loss_func, learning_rate, batch_size=batch_size, lr_scheduler=lr_scheduler, user_lr_scheduler=user_lr_scheduler, min_lr=min_lr)
+        self.train_acc = torchmetrics.Accuracy(task="multiclass", num_classes=num_classes)
+        self.val_acc = torchmetrics.Accuracy(task="multiclass", num_classes=num_classes)
+        self.test_acc = torchmetrics.Accuracy(task="multiclass", num_classes=num_classes)
+
+    def training_step(self, data_batch, *args, **kwargs):
+        data, labels = data_batch
+        print(f'labels[:5]: {labels[:5]}')
+        data.to(self.device)
+        labels = labels.to(self.device)
+        out_features = self(data)
+        h_out_features = HeteroLossArgs(out_features[0], out_features[1])
+        label_features = HeteroLossArgs(labels, data.x_dict)
+        loss = self.loss_func(h_out_features, label_features)
+        self.log('train_loss', loss, batch_size=self.batch_size, prog_bar=True, on_epoch=True, on_step=True)
+        self.train_acc(torch.argmax(out_features[0], dim=1), torch.argmax(label_features[0], dim=1))
+        self.log('train_acc', self.train_acc, prog_bar=True, on_epoch=True, on_step=True)
+        
+        data.to('cpu')
+        return loss
+
+    def validation_step(self, data_batch, *args, **kwargs):
+        data, labels = data_batch
+        data.to(self.device)
+        labels = labels.to(self.device)
+        out_features = self(data)
+        h_out_features = HeteroLossArgs(out_features[0], out_features[1])
+        label_features = HeteroLossArgs(labels, data.x_dict)
+        loss = self.loss_func(h_out_features, label_features)
+        self.log('val_loss', loss, batch_size=self.batch_size, on_epoch=True, on_step=False)
+        self.val_acc(torch.argmax(out_features[0], dim=1), torch.argmax(label_features[0], dim=1))
+        self.log('val_acc', self.val_acc, prog_bar=True, on_epoch=True, on_step=False)
+        data.to('cpu')
+
+    def _get_loss_func(self, loss_func):
+        return loss_func \
+            if loss_func is not None else \
+            MulticlassHeteroLoss1('word')
