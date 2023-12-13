@@ -59,10 +59,11 @@ class GraphConstructor(ABC):
         self.save_path = os.path.join(config.root, save_path)
         self.naming_prepend = naming_prepend
         self.use_compression = use_compression
-        self.saving_batch_size = 1000
+        # self.saving_batch_size = 10000 # uncomment for Yelp Dataset
+        self.saving_batch_size = 1000 # uncomment for other datasets
         # self.node_attr, self.node_label, self.edge_index, self.edge_attr, self.edge_label = None, None, None, None, None
         # self.data = Data(x=self.node_attr, y=self.node_label, edge_index=self.edge_index)
-        self._graphs: List = [None for r in raw_data]
+        self._graphs: List = [None for r in range(end_data_load)]
 
     def setup(self, load_preprocessed_data = True):
         self.load_preprocessed_data = True
@@ -71,17 +72,21 @@ class GraphConstructor(ABC):
             for i in tqdm(range(self.start_data_load , self.end_data_load , self.saving_batch_size), desc =" Loding Graphs From File "):
                 self.load_data_range(i , i + self.saving_batch_size)
         else:
+            # save the content
             save_start = self.start_data_load
-            self.end_data_load = len(self.raw_data) if self.end_data_load > len(self.raw_data) else self.end_data_load
             for i in tqdm(range(self.start_data_load , self.end_data_load), desc =" Creating Graphs "):
                 if i % self.saving_batch_size == 0:
                     if i != self.start_data_load: 
                         self.save_data_range(save_start, save_start + self.saving_batch_size)
                         save_start = i
-                self._graphs[i] = self.to_graph(self.raw_data[i])
+                # self._graphs[i] = self.to_graph(self.raw_data[i])
                 self.var.graphs_name[i] = f'{self.naming_prepend}_{i}'
             self.save_data_range(save_start, self.end_data_load)
             self.var.save_to_file(os.path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
+            # Load the content
+            self._graphs: List = [None for r in range(self.end_data_load)]
+            self.setup(load_preprocessed_data=True)
+            
 
     @abstractmethod
     def to_graph(self, raw_data):
@@ -166,7 +171,7 @@ class GraphConstructor(ABC):
     def save_data_range(self, start: int, end: int):
         data_list = []
         for i in range(start, end):
-            data_list.append(self.to_graph_indexed(self.raw_data[i]))
+            data_list.append(self.to_graph_indexed(self.raw_data[i - self.start_data_load]))
         torch.save(data_list, path.join(self.save_path, f'{start}_{end}_compressed.pt'))
         
     def load_all_data_comppressed(self):
@@ -180,7 +185,7 @@ class GraphConstructor(ABC):
         data_list = torch.load(path.join(self.save_path, f'{start}_{end}_compressed.pt'))
         index = 0
         for i in range(start, end):
-            self._graphs[i] = self.prepare_loaded_data(data_list[index])
+            self._graphs[i - self.start_data_load] = self.prepare_loaded_data(data_list[index])
             index += 1
         pass    
 
