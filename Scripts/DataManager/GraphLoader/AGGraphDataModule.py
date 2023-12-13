@@ -62,10 +62,10 @@ class AGGraphDataModule(GraphDataModule):
         self.df = pd.concat([self.train_df, self.test_df])
         self.end_data_load = self.end_data_load if self.end_data_load>0 else self.df.shape[0]
         self.end_data_load = self.end_data_load if self.end_data_load < self.df.shape[0] else self.df.shape[0] 
-        self.df = self.df.iloc[:self.end_data_load]
-        self.df.index = np.arange(0, self.end_data_load)
+        self.df = self.df.iloc[self.start_data_load:self.end_data_load]
+        self.df.index = np.arange(0, self.end_data_load - self.start_data_load)
         # activate one line below
-        labels = self.df['Class'][self.start_data_load:self.end_data_load]
+        labels = self.df['Class'][:self.end_data_load - self.start_data_load]
         labels = labels.to_numpy()
         labels = torch.from_numpy(labels)
         self.num_classes = len(torch.unique(labels))
