@@ -197,8 +197,8 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         pass
     def to_graph_indexed(self, text: str):
         doc = self.nlp(text)
-        if len(doc) < 2:
-            return
+        # if len(doc) < 2:
+        #     return
         if self.use_sentence_nodes:
             return self.__create_graph_with_sentences(doc , for_compression=True)
         else:

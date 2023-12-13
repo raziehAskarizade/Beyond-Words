@@ -59,8 +59,7 @@ class GraphConstructor(ABC):
         self.save_path = os.path.join(config.root, save_path)
         self.naming_prepend = naming_prepend
         self.use_compression = use_compression
-        # self.saving_batch_size = 10000 # uncomment for Yelp Dataset
-        self.saving_batch_size = 1000 # uncomment for other datasets
+        self.saving_batch_size = 1000 
         # self.node_attr, self.node_label, self.edge_index, self.edge_attr, self.edge_label = None, None, None, None, None
         # self.data = Data(x=self.node_attr, y=self.node_label, edge_index=self.edge_index)
         self._graphs: List = [None for r in range(end_data_load)]

@@ -33,8 +33,8 @@ class SentimentGraphConstructor(TagDepTokenGraphConstructor):
         
     def to_graph(self, text: str):
         doc = self.nlp(text)
-        if len(doc) < 2:
-            return
+        # if len(doc) < 2:
+        #     return
         return self.__create_sentiment_graph(doc)
     def _build_initial_sentiment_vector(self):
         return torch.zeros((2 , self.nlp.vocab.vectors_length), dtype=torch.float32)   
@@ -71,8 +71,8 @@ class SentimentGraphConstructor(TagDepTokenGraphConstructor):
                     
     def to_graph_indexed(self, text: str):
         doc = self.nlp(text)
-        if len(doc) < 2:
-            return
+        # if len(doc) < 2:
+        #     return
         return self.__create_sentiment_graph(doc , for_compression=True)
     
     def prepare_loaded_data(self, graph):
