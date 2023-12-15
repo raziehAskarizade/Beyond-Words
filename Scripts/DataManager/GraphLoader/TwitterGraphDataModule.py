@@ -62,11 +62,11 @@ class TwitterGraphDataModule(GraphDataModule):
         # self.df = g.apply(lambda x: x.sample(self.end_data_load if self.end_data_load > 0 else g.size().min()).reset_index(drop=True))
         # self.df = self.df.sample(frac=1 , random_state=1).reset_index(drop=True) # using seed in shuffling
     
-        self.df = self.df.iloc[:self.end_data_load]
-        # self.df.index = np.arange(0, self.end_data_load)
+        self.df = self.df.iloc[self.start_data_load:self.end_data_load]
+        self.df.index = np.arange(0, self.end_data_load - self.start_data_load)
         # self.df.to_csv('sentiment140-balanced.csv' , index=False)
         # activate one line below
-        labels = self.df['Polarity'][self.start_data_load:self.end_data_load]
+        labels = self.df['Polarity'][:self.end_data_load - self.start_data_load]
         labels = labels.apply(lambda p: 0 if p == 0 else 1).to_numpy()
         labels = torch.from_numpy(labels)
         self.labels = labels.to(torch.float32).view(-1, 1).to(self.device)

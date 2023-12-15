@@ -27,7 +27,7 @@ class GraphConstructorDatasetRanged(Dataset):
         self.len = len(self.graph_labels)
 
     def __getitem__(self, index):
-        x = self.graph_constructor.get_graph(self.begin + index)
+        x = self.graph_constructor.get_graph(index)
         y = self.graph_labels[index]
         return x, y
 
