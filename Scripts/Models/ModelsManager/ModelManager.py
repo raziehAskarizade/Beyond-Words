@@ -8,6 +8,8 @@ from lightning.pytorch.callbacks import Callback, ModelCheckpoint, EarlyStopping
 from lightning.pytorch.loggers import Logger, CSVLogger
 from lightning.pytorch.tuner import Tuner
 from typing import List
+from pytorch_lightning.core.saving import save_hparams_to_yaml
+
 
 class ModelManager(ABC):
 
@@ -94,7 +96,18 @@ class ModelManager(ABC):
     @abstractmethod
     def plot_csv_logger(self, loss_names, eval_names):
         pass
-
+    
+    def save_hyper_parameters(self):
+        mhparams = {
+            'start_lr': 0.045,
+            'ckpt_lrs' :  {51: 0.002, 65: 0.00058},
+            'last_lr' : 0.0003,
+            'ac_loss_factor': 0.0002,
+            'weight_decay': 0.0012
+        }
+        save_hparams_to_yaml(config_yaml=r'logs\hetero_model_17_AG\version_12\hparams.yaml',
+                     hparams=mhparams)
+        
     # def find_best_settings(data_manager,
     #                        lrs: List[float]=[0.001], dropouts: List[float]=[0.2], 
     #                        weight_decays: List[float]=[0.00055], emb_factors: List[float]=[0.1], 
