@@ -1,3 +1,5 @@
+# Fardin Rastakhiz @ 2023
+
 from Scripts.Models.LightningModels.LightningModels import BaseLightningModel
 from abc import ABC, abstractmethod
 from typing import List, Optional

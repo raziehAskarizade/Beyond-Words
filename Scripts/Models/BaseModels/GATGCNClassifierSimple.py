@@ -1,3 +1,5 @@
+# Fardin Rastakhiz @ 2023
+
 
 from torch_geometric.nn import GATv2Conv, GCNConv, GCN2Conv
 from torch_geometric.nn import Sequential as GSequential

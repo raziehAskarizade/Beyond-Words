@@ -1,3 +1,4 @@
+# Fardin Rastakhiz @ 2023
 
 from torch.utils.data import Dataset
 from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor

@@ -1,3 +1,5 @@
+# Fardin Rastakhiz @ 2023
+
 import uuid
 
 from Scripts.DataManager.GraphLoader.GraphLoader import GraphDataModule

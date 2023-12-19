@@ -1,3 +1,5 @@
+# Fardin Rastakhiz @ 2023
+
 import torch
 from torch.nn import Linear
 from torch_geometric.nn import GATv2Conv, GCNConv, GCN2Conv, DenseGCNConv, dense_diff_pool

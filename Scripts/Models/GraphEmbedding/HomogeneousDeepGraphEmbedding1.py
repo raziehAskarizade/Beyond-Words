@@ -1,3 +1,5 @@
+# Fardin Rastakhiz @ 2023
+
 
 from torch.nn import Linear
 from torch_geometric.nn import GATv2Conv, GCNConv, GCN2Conv, BatchNorm, MemPooling
