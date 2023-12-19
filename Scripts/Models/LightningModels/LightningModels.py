@@ -1,3 +1,5 @@
+# Fardin Rastakhiz @ 2023
+
 from typing import Any
 import torch
 import torchmetrics
@@ -228,7 +230,6 @@ class HeteroMultiClassLightningModel(BaseLightningModel):
 
     def training_step(self, data_batch, *args, **kwargs):
         data, labels = data_batch
-        print(f'labels[:5]: {labels[:5]}')
         data.to(self.device)
         labels = labels.to(self.device)
         out_features = self(data)
@@ -236,7 +237,7 @@ class HeteroMultiClassLightningModel(BaseLightningModel):
         label_features = HeteroLossArgs(labels, data.x_dict)
         loss = self.loss_func(h_out_features, label_features)
         self.log('train_loss', loss, batch_size=self.batch_size, prog_bar=True, on_epoch=True, on_step=True)
-        self.train_acc(torch.argmax(out_features[0], dim=1), torch.argmax(label_features[0], dim=1))
+        self.train_acc(torch.argmax(out_features[0], dim=1), torch.argmax(labels, dim=1))
         self.log('train_acc', self.train_acc, prog_bar=True, on_epoch=True, on_step=True)
         
         data.to('cpu')
@@ -251,7 +252,7 @@ class HeteroMultiClassLightningModel(BaseLightningModel):
         label_features = HeteroLossArgs(labels, data.x_dict)
         loss = self.loss_func(h_out_features, label_features)
         self.log('val_loss', loss, batch_size=self.batch_size, on_epoch=True, on_step=False)
-        self.val_acc(torch.argmax(out_features[0], dim=1), torch.argmax(label_features[0], dim=1))
+        self.val_acc(torch.argmax(out_features[0], dim=1), torch.argmax(labels, dim=1))
         self.log('val_acc', self.val_acc, prog_bar=True, on_epoch=True, on_step=False)
         data.to('cpu')
 
