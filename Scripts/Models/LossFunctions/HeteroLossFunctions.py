@@ -45,9 +45,11 @@ class HeteroLoss2(torch.nn.Module):
             tensor2 = out_main.x_dict[key]
             if tensor2.ndim == 1 and tensor2.dtype is torch.long:
                 tensor2 = torch.nn.functional.one_hot(input=tensor2.to(torch.long), num_classes=tensor1.shape[1]).to(torch.float32)
+            mean1 = torch.mean(tensor1, dim=1)
+            mean2 = torch.mean(tensor2, dim=1)
             loss += self.enc_factor * self.mse_loss(tensor1, tensor2)
         return loss
-    
+      
 class MulticlassHeteroLoss1(torch.nn.Module):
     def __init__(self, exception_keys: List[str], enc_factor=0.0, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)

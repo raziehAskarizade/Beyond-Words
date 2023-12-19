@@ -108,7 +108,6 @@ class ClassifierModelManager(ModelManager):
         if(give_hinge_loss):
             print(f'hinge_loss: {hinge_loss(y_true, y_pred)}')
                 
-    
     def save_evaluation(self, eval_dataloader, name_prepend: str='',
                     give_confusion_matrix: bool=True, 
                     give_report: bool=True, 
@@ -142,6 +141,8 @@ class ClassifierModelManager(ModelManager):
                     y_true.append(y.to(torch.int32))
             y_true = torch.concat(y_true)
             y_pred = torch.concat(y_pred)
+            print(y_true.shape)
+            print(y_pred.shape)
             if multi_class:
                 y_true_num = torch.argmax(y_true, dim=1)
                 y_pred_num = torch.argmax(y_pred, dim=1)
@@ -149,6 +150,8 @@ class ClassifierModelManager(ModelManager):
                 y_true_num = y_true
                 y_pred_num = y_pred
                 
+            print(y_true_num.shape)
+            print(y_pred_num.shape)
             with open(test_metrics_path, 'at+') as f:
                 if(give_confusion_matrix):
                     print(f'confusion_matrix: \n{confusion_matrix(y_true_num, y_pred_num)}', file=f)
@@ -173,4 +176,3 @@ class ClassifierModelManager(ModelManager):
                         print(f'f1_score: {recall_score(y_true_num, y_pred_num)}', file=f)
                 if(give_hinge_loss):
                     print(f'hinge_loss: {hinge_loss(y_true_num, y_pred)}', file=f)
-        

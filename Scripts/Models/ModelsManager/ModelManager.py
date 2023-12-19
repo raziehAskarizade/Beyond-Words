@@ -53,8 +53,9 @@ class ModelManager(ABC):
         if ckpt_path is not None and ckpt_path != '':
             self.ckpt_path = ckpt_path
         if max_epochs>0:
-            self.max_epochs = max_epochs
-            self.trainer = self._create_trainer()
+            self.trainer.fit_loop.max_epochs = max_epochs
+            # self.max_epochs = max_epochs
+            # self.trainer = self._create_trainer()
         self.trainer.fit(self.lightning_model,
                          datamodule=datamodule,
                          train_dataloaders=train_dataloaders,
