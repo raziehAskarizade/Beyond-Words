@@ -4,7 +4,7 @@ from typing import List
 import torch
 from torch import nn
 
-from Scripts.Models.LossFunctions.loss_helpers import HeteroLossArgs
+from Scripts.Models.LossFunctions.HeteroLossArgs import HeteroLossArgs
 
         
 class HeteroLoss1(torch.nn.Module):
