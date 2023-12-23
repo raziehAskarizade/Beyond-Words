@@ -3,7 +3,7 @@
 import torch
 import torchmetrics
 from Scripts.Models.LightningModels.LightningModels import BaseLightningModel
-from Scripts.Models.LossFunctions.loss_helpers import HeteroLossArgs
+from Scripts.Models.LossFunctions.HeteroLossArgs import HeteroLossArgs
 
 
 class LightningPromptModel(BaseLightningModel):

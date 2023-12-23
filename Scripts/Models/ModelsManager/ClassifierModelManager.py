@@ -87,7 +87,7 @@ class ClassifierModelManager(ModelManager):
         y_pred = []
         self.lightning_model.eval()
         for X, y in eval_dataloader:
-            y_p = self.torch_model(X.to(self.device))
+            y_p = self.lightning_model(X.to(self.device))
             if type(y_p) is tuple:
                 y_p = y_p[0]
             y_pred.append((y_p>0).to(torch.int32).detach().to(y.device))
@@ -128,9 +128,8 @@ class ClassifierModelManager(ModelManager):
             self.lightning_model.model.eval()
             self.torch_model.eval()
             for X, y in eval_dataloader:
-                self.trainer.model.eval()
                 with torch.no_grad():
-                    y_p = self.trainer.model(X.to(self.device))
+                    y_p = self.lightning_model(X.to(self.device))
                 if type(y_p) is tuple:
                     y_p = y_p[0]
                 
