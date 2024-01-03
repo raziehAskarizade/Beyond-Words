@@ -37,7 +37,7 @@ class HeteroDeepGraphEmbedding7(torch.nn.Module):
         self.hetero_linear1 = to_hetero(HeteroLinear(self.input_features,self.hidden_feature, use_dropout=False, use_batch_norm=True), metadata)
         
         self.hetero_gat_1 = to_hetero(HeteroGat(self.hidden_feature, self.hidden_feature, dropout, num_heads=2), metadata)
-        self.hetero_gat_2 = to_hetero(HeteroGat(self.hidden_feature, self.input_features, dropout, num_heads=2, use_relu=True, use_norm=True, use_dropout=False), metadata)
+        self.hetero_gat_2 = to_hetero(HeteroGat(self.hidden_feature, self.input_features, dropout, num_heads=2, use_relu=True, use_norm=True, use_dropout=True), metadata)
         
         self.hetero_linear_2 = to_hetero(HeteroLinear(self.hidden_feature, self.hidden_feature, dropout, use_batch_norm=True), metadata)
         
@@ -62,7 +62,6 @@ class HeteroDeepGraphEmbedding7(torch.nn.Module):
         self.x_dict_cpu_1 = None
         self.x_dict_cpu_2 = None
         
-
     def forward(self, x: HeteroData) -> Tensor:
         self.x_batches = {k:x[k].batch for k in self.active_keys}
         x_dict, edge_attr_dict, edge_index_dict = self.preprocess_data(x)
