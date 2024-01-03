@@ -7,7 +7,7 @@ from torch_geometric.data import HeteroData
 from Scripts.Models.BaseModels.HeteroGat import HeteroGat
 from Scripts.Models.BaseModels.HeteroLinear import HeteroLinear
 
-class HeteroDeepGraphEmbedding7(torch.nn.Module):
+class HeteroDeepGraphEmbedding8(torch.nn.Module):
     
     def __init__(self,
                  input_feature: int, out_features: int,
@@ -21,7 +21,7 @@ class HeteroDeepGraphEmbedding7(torch.nn.Module):
                  num_pooling_classes=1
                  ):
 
-        super(HeteroDeepGraphEmbedding7, self).__init__()
+        super(HeteroDeepGraphEmbedding8, self).__init__()
         self.input_features = input_feature
         self.num_out_features = out_features
         self.hidden_feature: int = hidden_feature
@@ -49,19 +49,9 @@ class HeteroDeepGraphEmbedding7(torch.nn.Module):
         self.batch_norm_1 = BatchNorm(self.hidden_feature)
         
         self.output_layer = Linear(self.hidden_feature, self.num_out_features)
-        
-        self.dep_embedding = torch.nn.Embedding(45, self.input_features)
-        self.tag_embedding = torch.nn.Embedding(50, self.input_features)
-        self.dep_unembedding = torch.nn.Linear(self.input_features, 45)
-        self.tag_unembedding = torch.nn.Linear(self.input_features, 50)
-        
+                
         self.pw1 = torch.nn.Parameter(torch.tensor(self.edge_type_weights, dtype=torch.float32), requires_grad=False)
-        
-        self.x_batches = None
-        self.x_batches_cpu = None
-        self.x_dict_cpu_1 = None
-        self.x_dict_cpu_2 = None
-        
+                
     def forward(self, x: HeteroData) -> Tensor:
         self.x_batches = {k:x[k].batch for k in self.active_keys}
         x_dict, edge_attr_dict, edge_index_dict = self.preprocess_data(x)
@@ -76,19 +66,12 @@ class HeteroDeepGraphEmbedding7(torch.nn.Module):
         x_pooled = F.relu(self.linear_1(x_pooled))
         x_pooled = F.relu(self.batch_norm_1(self.linear_2(x_pooled)))
         out = self.output_layer(x_pooled)
-        
-        x_dict['dep'] = self.dep_unembedding(x_dict['dep'])
-        x_dict['tag'] = self.tag_unembedding(x_dict['tag'])
-        
+                
         return out, x_dict
 
     def preprocess_data(self, x):
         x_dict = {key: x.x_dict[key] for key in x.x_dict}
-        if 'dep' in x_dict:
-            x_dict['dep'] = self.dep_embedding(x_dict['dep'])
-        if 'tag' in x_dict:
-            x_dict['tag'] = self.tag_embedding(x_dict['tag'])
-
+        
         edge_attr_dict = x.edge_attr_dict
         edge_index_dict = x.edge_index_dict
 
