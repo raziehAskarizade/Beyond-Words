@@ -1,101 +1,178 @@
+# Fardin Rastakhiz @ 2023
+
 import torch
-import torch.nn.functional as F
-
-from torch_geometric.nn import summary
-from tqdm import tqdm
-
+from Scripts.Models.LightningModels.LightningModels import BaseLightningModel
 from Scripts.Models.ModelsManager.ModelManager import ModelManager
-from Scripts.Models.ClassifierModels.GATGCNClassifierSimple import GNNClassifier
-from Scripts.DataManager.GraphLoader.GraphLoaderType1 import GraphLoaderType1
-from Scripts.Helpers.enums import Optimizer, LossType
+import pandas as pd
+import matplotlib.pyplot as plt
+from typing import List
+from torch_geometric.nn import summary
+from lightning.pytorch.callbacks import Callback, ModelCheckpoint, EarlyStopping
+from os import path
+
+from sklearn.metrics import classification_report, f1_score, accuracy_score, precision_score, recall_score, confusion_matrix, hinge_loss
 
 
 class ClassifierModelManager(ModelManager):
 
-    def __init__(self, graph_handler: GraphLoaderType1, device=torch.device('cpu'),
-                 lr=0.01, l2_norm=0.001, optimizer_type: Optimizer = Optimizer.ADAM,
-                 loss_type: LossType = LossType.CROSS_ENTROPY):
-        super(ClassifierModelManager, self).__init__(lr, l2_norm, device)
-        self.graph_handler = graph_handler
-        self.num_output_classes = self.graph_handler.num_classes
-        self.num_input_features = self.graph_handler.num_features
+    def __init__(self,
+                 torch_model: torch.nn.Module,
+                 lightning_model: BaseLightningModel,
+                 model_save_dir: str = '~/Desktop',
+                 log_dir: str = 'logs/',
+                 log_name: str = 'model_logs',
+                 device='cpu',
+                 num_train_epoch = 100):
+        super(ClassifierModelManager, self).__init__(torch_model, lightning_model, model_save_dir, log_dir, log_name, device, num_train_epoch)
 
-        self.loss_type = loss_type
-        self.optimizer_type = optimizer_type
-        self.model, self.optimizer, self.loss_func = self.__create_model(lr, l2_norm, optimizer_type, loss_type)
+    def _create_callbacks(self) -> List[Callback]:
+        return [
+            ModelCheckpoint(save_top_k=2, mode='max', monitor='val_acc', save_last=True),
+            # EarlyStopping(patience=50, mode='max', monitor='val_acc')
+        ]
 
-    def train(self, epoch_num: int = 100, lr: float = None, l2_norm: float = None, optimizer: Optimizer = None):
-        if lr or l2_norm or optimizer:
-            self.set_optimizer(lr, l2_norm, optimizer)
+    def draw_summary(self, dataloader):
+        X, y = next(iter(dataloader))
+        print(summary(self.torch_model, X.to(self.device)))
 
-        train_losses = []
-        train_accuracies = []
-        test_losses = []
-        test_accuracies = []
+    def plot_csv_logger(self, loss_names=['train_loss', 'val_loss'], eval_names=['train_acc', 'val_acc']):
+        csv_path = path.join(self.log_dir, self.log_name, f'version_{self.logger.version}', 'metrics.csv')
+        metrics = pd.read_csv(csv_path)
 
-        train_node_x, train_node_y, train_edges = self.graph_handler.get_train_data()
-        test_node_x, test_node_y, test_edges = self.graph_handler.get_test_data()
-        for i in tqdm(range(epoch_num)):
-            self.model.train()
-            self.optimizer.zero_grad()
-            my_node, my_label, my_edges = self.graph_handler.extract_random_sub_edges_graph()
-            y_hat: torch.Tensor = self.model(my_node, my_edges)
-            loss = self.loss_func(F.one_hot(my_label, self.num_output_classes).float(), y_hat)
-            loss.backward()
-            self.optimizer.step()
+        aggregation_metrics = []
+        agg_col = 'epoch'
+        for i, dfg in metrics.groupby(agg_col):
+            agg = dict(dfg.mean())
+            agg[agg_col] = i
+            aggregation_metrics.append(agg)
 
-            self.model.eval()
+        df_metrics = pd.DataFrame(aggregation_metrics)
+        df_metrics[loss_names].plot(grid=True, legend=True, xlabel='Epoch', ylabel='loss')
+        df_metrics[eval_names].plot(grid=True, legend=True, xlabel='Epoch', ylabel='accuracy')
+        plt.show()
 
-            loss_value = loss.item()
-            train_losses.append(loss_value)
-            accuracy = (torch.sum((y_hat.argmax(dim=1) == my_label).float()) / len(my_label)).cpu().numpy()
-            train_accuracies.append(accuracy)
+    def save_plot_csv_logger(self, loss_names=['train_loss', 'val_loss'], eval_names=['train_acc', 'val_acc'], name_prepend: str=""):
+        csv_path = path.join(self.log_dir, self.log_name, f'version_{self.logger.version}', 'metrics.csv')
+        metrics = pd.read_csv(csv_path)
 
-            my_node, my_label, my_edges = self.graph_handler.extract_random_sub_edges_graph()
-            y_hat: torch.Tensor = self.model(my_node, my_edges)
-            loss = self.loss_func(F.one_hot(my_label, self.graph_handler.num_classes).float(), y_hat)
-            loss_value = loss.item()
-            test_losses.append(loss_value)
-            accuracy = (torch.sum((y_hat.argmax(dim=1) == my_label).float()) / len(my_label)).cpu().numpy()
-            test_accuracies.append(accuracy)
-        self.history['train_losses'] = train_losses
-        self.history['train_accuracies'] = train_accuracies
-        self.history['test_losses'] = test_losses
-        self.history['test_accuracies'] = test_accuracies
-        return self.history
+        aggregation_metrics = []
+        agg_col = 'epoch'
+        for i, dfg in metrics.groupby(agg_col):
+            agg = dict(dfg.mean())
+            agg[agg_col] = i
+            aggregation_metrics.append(agg)
 
-    def evaluate(self):
-        node_x, node_y, edges = self.graph_handler.get_val_data()
-        self.model.eval()
-        y_hat: torch.Tensor = self.model(node_x, edges)
-        loss = self.loss_func(F.one_hot(node_y, self.num_output_classes).float(), y_hat)
-        return y_hat, loss
-
-    def predict(self, node_x, edge_index):
-        self.model.eval()
-        y_hat: torch.Tensor = self.model(node_x, edge_index)
-        return y_hat
-
-    def draw_summary(self):
-        nodes_x, nodes_y, edge_indices_test = self.graph_handler.get_test_data()
-        nodes_x, nodes_y, edge_indices_test = self.graph_handler.extract_random_sub_edges_graph(2)
-        print(summary(self.model, nodes_x, edge_indices_test))
-
-    def __create_model(self, lr, l2_norm, optimizer_type, loss_type):
-        model = GNNClassifier(input_feature=self.num_input_features, class_counts=self.num_output_classes)
-        optimizer = ModelManager._create_optimizer(model, lr, l2_norm, optimizer_type)
-        loss_func = ModelManager._create_loss_func(loss_type)
-        model.to(self.device)
-        return model, optimizer, loss_func
-
-    def set_optimizer(self, lr, l2_norm, optimizer=Optimizer.ADAM):
-        if lr:
-            self.lr = lr
-        if l2_norm:
-            self.l2_norm = l2_norm
-        if optimizer:
-            self.optimizer_type = optimizer
-        self.optimizer = ModelManager._create_optimizer(self.model, self.lr, self.l2_norm, self.optimizer_type)
-
-
-
+        df_metrics = pd.DataFrame(aggregation_metrics)
+        df_metrics[loss_names].plot(grid=True, legend=True, xlabel='Epoch', ylabel='loss')
+        
+        loss_png = path.join(self.log_dir, self.log_name, f'version_{self.logger.version}', f'{name_prepend}_loss_metric.png')
+        plt.savefig(loss_png)
+        
+        df_metrics[eval_names].plot(grid=True, legend=True, xlabel='Epoch', ylabel='accuracy')
+        
+        acc_png = path.join(self.log_dir, self.log_name, f'version_{self.logger.version}', f'{name_prepend}_acc_metric.png')
+        plt.savefig(acc_png)
+        
+        plt.close()
+    
+    def evaluate(self, eval_dataloader,
+                 give_confusion_matrix: bool=True, 
+                 give_report: bool=True, 
+                 give_f1_score: bool=False, 
+                 give_accuracy_score: bool=False, 
+                 give_precision_score: bool=False, 
+                 give_recall_score: bool=False, 
+                 give_hinge_loss: bool=False):
+        y_true = []
+        y_pred = []
+        self.lightning_model.eval()
+        for X, y in eval_dataloader:
+            y_p = self.lightning_model(X.to(self.device))
+            if type(y_p) is tuple:
+                y_p = y_p[0]
+            y_pred.append((y_p>0).to(torch.int32).detach().to(y.device))
+            y_true.append(y.to(torch.int32))
+        y_true = torch.concat(y_true)
+        y_pred = torch.concat(y_pred)
+        if(give_confusion_matrix):
+            print(f'confusion_matrix: \n{confusion_matrix(y_true, y_pred)}')
+        if(give_report):
+            print(classification_report(y_true, y_pred))
+        if(give_f1_score):
+            print(f'f1_score: {f1_score(y_true, y_pred)}')
+        if(give_accuracy_score):
+            print(f'accuracy_score: {accuracy_score(y_true, y_pred)}')
+        if(give_precision_score):
+            print(f'precision_score: {precision_score(y_true, y_pred)}')
+        if(give_recall_score):
+            print(f'recall_score: {recall_score(y_true, y_pred)}')
+        if(give_hinge_loss):
+            print(f'hinge_loss: {hinge_loss(y_true, y_pred)}')
+                
+    def save_evaluation(self, eval_dataloader, name_prepend: str='',
+                    give_confusion_matrix: bool=True, 
+                    give_report: bool=True, 
+                    give_f1_score: bool=False, 
+                    give_accuracy_score: bool=False, 
+                    give_precision_score: bool=False, 
+                    give_recall_score: bool=False, 
+                    give_hinge_loss: bool=False,
+                    multi_class: bool=False
+                    ):
+            
+            test_metrics_path = path.join(self.log_dir, self.log_name, f'version_{self.logger.version}', f'{name_prepend}_test_metrics.txt')
+            
+            y_true = []
+            y_pred = []
+            self.lightning_model.eval()
+            self.lightning_model.model.eval()
+            self.torch_model.eval()
+            for X, y in eval_dataloader:
+                with torch.no_grad():
+                    y_p = self.lightning_model(X.to(self.device))
+                if type(y_p) is tuple:
+                    y_p = y_p[0]
+                
+                if multi_class:
+                    y_pred.append(y_p.detach().to(y.device))
+                    y_true.append(y)
+                else:
+                    y_pred.append((y_p>0).to(torch.int32).detach().to(y.device))
+                    y_true.append(y.to(torch.int32))
+            y_true = torch.concat(y_true)
+            y_pred = torch.concat(y_pred)
+            print(y_true.shape)
+            print(y_pred.shape)
+            if multi_class:
+                y_true_num = torch.argmax(y_true, dim=1)
+                y_pred_num = torch.argmax(y_pred, dim=1)
+            else:
+                y_true_num = y_true
+                y_pred_num = y_pred
+                
+            print(y_true_num.shape)
+            print(y_pred_num.shape)
+            with open(test_metrics_path, 'at+') as f:
+                if(give_confusion_matrix):
+                    print(f'confusion_matrix: \n{confusion_matrix(y_true_num, y_pred_num)}', file=f)
+                if(give_report):
+                    print(classification_report(y_true_num, y_pred_num), file=f)
+                if(give_f1_score):
+                    if multi_class:
+                        print(f'f1_score: {f1_score(y_true_num, y_pred_num, average=None)}', file=f)
+                    else:
+                        print(f'f1_score: {f1_score(y_true_num, y_pred_num)}', file=f)
+                if(give_accuracy_score):
+                    print(f'accuracy_score: {accuracy_score(y_true_num, y_pred_num)}', file=f)
+                if(give_precision_score):
+                    if multi_class:
+                        print(f'f1_score: {precision_score(y_true_num, y_pred_num, average=None)}', file=f)
+                    else:
+                        print(f'f1_score: {precision_score(y_true_num, y_pred_num)}', file=f)
+                if(give_recall_score):
+                    if multi_class:
+                        print(f'f1_score: {recall_score(y_true_num, y_pred_num, average=None)}', file=f)
+                    else:
+                        print(f'f1_score: {recall_score(y_true_num, y_pred_num)}', file=f)
+                if(give_hinge_loss):
+                    print(f'hinge_loss: {hinge_loss(y_true_num, y_pred)}', file=f)

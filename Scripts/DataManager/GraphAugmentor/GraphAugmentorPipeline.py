@@ -1,9 +1,11 @@
+# Fardin Rastakhiz @ 2023
+
 import copy
 
 from GraphAugmentor import GraphAugmentor
 from collections import OrderedDict
 from uuid import UUID
-from Scripts.DataManager.GraphLoader.GraphLoader import GraphLoader
+from Scripts.DataManager.GraphLoader.GraphLoader import GraphDataModule
 
 
 class GraphAugmentorPipeline(GraphAugmentor):
@@ -21,7 +23,7 @@ class GraphAugmentorPipeline(GraphAugmentor):
     def reset_pipeline(self):
         self._augment_pipeline_dict = dict()
 
-    def augment(self, graph_loader: GraphLoader):
+    def augment(self, graph_loader: GraphDataModule):
         augmented_graph_loader = copy.copy(graph_loader)
         for key in self._augment_pipeline_dict:
             augmentor = self._augment_pipeline_dict[key]

@@ -1,0 +1,34 @@
+confusion_matrix: 
+[[9803 1040]
+ [1893 9264]]
+              precision    recall  f1-score   support
+
+           0       0.84      0.90      0.87     10843
+           1       0.90      0.83      0.86     11157
+
+    accuracy                           0.87     22000
+   macro avg       0.87      0.87      0.87     22000
+weighted avg       0.87      0.87      0.87     22000
+
+f1_score: 0.8633334886538372
+accuracy_score: 0.8666818181818182
+precision_score: 0.8990683229813664
+recall_score: 0.8303307340682979
+hinge_loss: 0.6261818181818182
+confusion_matrix: 
+[[ 8834  2009]
+ [  852 10305]]
+              precision    recall  f1-score   support
+
+           0       0.91      0.81      0.86     10843
+           1       0.84      0.92      0.88     11157
+
+    accuracy                           0.87     22000
+   macro avg       0.87      0.87      0.87     22000
+weighted avg       0.87      0.87      0.87     22000
+
+f1_score: 0.8781048954028376
+accuracy_score: 0.8699545454545454
+precision_score: 0.8368523631638786
+recall_score: 0.923635385856413
+hinge_loss: 0.6229090909090909
