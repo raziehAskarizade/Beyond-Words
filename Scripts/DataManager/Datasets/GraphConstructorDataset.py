@@ -9,9 +9,10 @@ class GraphConstructorDataset(Dataset):
     def __init__(self, graph_constructor: GraphConstructor, graph_labels):
         self.graph_constructor = graph_constructor
         self.graph_labels = graph_labels
+        self.X = [self.graph_constructor.get_graph(index) for index in len(self.graph_labels)]
 
     def __getitem__(self, index):
-        x = self.graph_constructor.get_graph(index)
+        x = self.X[index]
         y = self.graph_labels[index]
         return x, y
 
@@ -26,9 +27,10 @@ class GraphConstructorDatasetRanged(Dataset):
         self.begin = begin
         self.end = end
         self.len = len(self.graph_labels)
+        self.X = [self.graph_constructor.get_graph(index) for index in range(begin, end)]
 
     def __getitem__(self, index):
-        x = self.graph_constructor.get_graph(index)
+        x = self.X[index]
         y = self.graph_labels[index]
         return x, y
 
