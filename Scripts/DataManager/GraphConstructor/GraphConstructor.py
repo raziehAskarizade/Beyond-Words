@@ -4,6 +4,7 @@ import os
 import pickle
 from os import path
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 import networkx as nx
 import numpy as np
@@ -59,6 +60,7 @@ class GraphConstructor(ABC):
         self.load_preprocessed_data = load_preprocessed_data
         self.var = variables
         self.save_path = os.path.join(config.root, save_path)
+        Path(self.save_path).mkdir(parents=True, exist_ok=True)
         self.naming_prepend = naming_prepend
         self.use_compression = use_compression
         self.saving_batch_size = 1000 
