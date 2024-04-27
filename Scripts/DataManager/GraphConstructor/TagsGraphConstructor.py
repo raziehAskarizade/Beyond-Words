@@ -10,10 +10,13 @@ from torch_geometric.utils import to_networkx
 from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor
 from torch_geometric.data import Data , HeteroData
 from Scripts.Configs.ConfigClass import Config
-import spacy
+
 import torch
 import numpy as np
 import os
+
+import stanza
+import fasttext
 
 
 class TagsGraphConstructor(GraphConstructor):
@@ -30,13 +33,25 @@ class TagsGraphConstructor(GraphConstructor):
             .__init__(texts, self._Variables(), save_path, config, load_preprocessed_data,
                       naming_prepend , use_compression,start_data_load, end_data_load)
         self.settings = {"tokens_tag_weight" : 1, "token_token_weight" : 2}
-        self.var.nlp_pipeline = self.config.spacy.pipeline
+        self.var.nlp_pipeline = self.config.fa.pipeline
         self.var.graph_num = len(self.raw_data)
-        self.nlp = spacy.load(self.var.nlp_pipeline)
+
+        # farsi
+        self.nlp = fasttext.load_model(self.var.nlp_pipeline)
+        self.token_lemma = stanza.Pipeline("fa")
+
         self.tags = self.nlp.get_pipe("tagger").labels
+        
 
     def to_graph(self, text: str):
-        doc = self.nlp(text)
+        # farsi
+        doc = []
+        token_list = self.token_lemma(text)
+        for sentence in token_list.sentences:
+            for token in sentence.words:
+                doc.append((token.text,token.lemma))
+
+
         if len(doc) < 2:
             return
         return self.__create_graph(doc)

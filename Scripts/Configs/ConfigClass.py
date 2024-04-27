@@ -18,14 +18,17 @@ class Config:
 
         self.device = config_data['device'] if 'device' in config_data else 'cpu'
 
-        if 'spacy' in config_data:
-            self.spacy: SpacyConfig = SpacyConfig(config_data['spacy'])
+        # farsi
+        if 'fa' in config_data:
+            self.fa: FaConfig = FaConfig(config_data['fa'])
 
         if 'datasets' in config_data:
             self.datasets = Datasets(config_data['datasets'])
 
+# farsi
 
-class SpacyConfig:
+
+class FaConfig:
     def __init__(self, json_data: dict):
         if 'pipeline' in json_data:
             self.pipeline: str = json_data['pipeline']
@@ -33,8 +36,8 @@ class SpacyConfig:
 
 class Datasets:
     def __init__(self, json_data: dict):
-        if 'amazon_review' in json_data:
-            self.amazon_review = Dataset(json_data['amazon_review'])
+        if 'snap_food' in json_data:
+            self.snap_food = Dataset(json_data['snap_food'])
 
 
 class Dataset:
