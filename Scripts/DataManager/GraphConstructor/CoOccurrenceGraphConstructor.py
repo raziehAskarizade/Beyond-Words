@@ -59,7 +59,7 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
         unique_words = []
         unique_map = {}
         for token in doc:
-            unique_words.append(token.lower())
+            unique_words.append(token[0].lower())
         unique_words = set(unique_words)
         if len(unique_words) < 2:
             return unique_words, unique_map
@@ -68,7 +68,7 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
         return unique_words, unique_map
 
     def __get_co_occurrence_matrix(self, doc, unique_words, unique_map):
-        tokens = [t.lower() for t in doc]
+        tokens = [t[0].lower() for t in doc]
         n_gram = 4
         g_length = doc.__len__() - n_gram
         dense_mat = torch.zeros(
