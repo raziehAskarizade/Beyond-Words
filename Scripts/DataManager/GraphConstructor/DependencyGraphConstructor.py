@@ -11,10 +11,14 @@ from torch_geometric.utils import to_networkx
 from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor
 from torch_geometric.data import Data, HeteroData
 from Scripts.Configs.ConfigClass import Config
-import spacy
+
 import torch
 import numpy as np
 import os
+
+# farsi
+import fasttext
+import stanza
 
 
 class DependencyGraphConstructor(GraphConstructor):
@@ -33,13 +37,22 @@ class DependencyGraphConstructor(GraphConstructor):
         self.settings = {"tokens_dep_weight": 1,
                          "dep_tokens_weight": 1, "token_token_weight": 2}
         self.use_node_dependencies = use_node_dependencies
-        self.var.nlp_pipeline = self.config.spacy.pipeline
+        self.var.nlp_pipeline = self.config.fa.pipeline
         self.var.graph_num = len(self.raw_data)
-        self.nlp = spacy.load(self.var.nlp_pipeline)
-        self.dependencies = self.nlp.get_pipe("parser").labels
+
+        # farsi
+        self.nlp = fasttext.load_model(self.var.nlp_pipeline)
+        self.token_lemma = stanza.Pipeline("fa")
+
+        self.dependencies = ['acl', 'acl:relcl', 'advcl', 'advcl:relcl', 'advmod', 'advmod:emph', 'advmod:lmod', 'amod', 'appos', 'aux', 'aux:pass', 'case', 'cc', 'cc:preconj', 'ccomp', 'clf', 'compound', 'compound:lvc', 'compound:prt', 'compound:redup', 'compound:svc', 'conj', 'cop', 'csubj', 'csubj:outer', 'csubj:pass', 'dep', 'det', 'det:numgov', 'det:nummod', 'det:poss', 'discourse',
+                             'dislocated', 'expl', 'expl:impers', 'expl:pass', 'expl:pv', 'fixed', 'flat', 'flat:foreign', 'flat:name', 'goeswith', 'iobj', 'list', 'mark', 'nmod', 'nmod:poss', 'nmod:tmod', 'nsubj', 'nsubj:outer', 'nsubj:pass', 'nummod', 'nummod:gov', 'obj', 'obl', 'obl:agent', 'obl:arg', 'obl:lmod', 'obl:tmod', 'orphan', 'parataxis', 'punct', 'reparandum', 'root', 'vocative', 'xcomp']
 
     def to_graph(self, text: str):
-        doc = self.nlp(text)
+        doc = []
+        token_list = self.token_lemma(text)
+        for word in token_list.iter_words():
+            doc.append((word, word.head, word.deprel, word.lemma))
+
         if len(doc) < 2:
             return
         if self.use_node_dependencies:
@@ -49,21 +62,21 @@ class DependencyGraphConstructor(GraphConstructor):
 
     def __create_graph(self, doc, for_compression=False):
         node_attr = torch.zeros(
-            (len(doc), self.nlp.vocab.vectors_length), dtype=torch.float32)
+            (len(doc), self.nlp.get_dimension()), dtype=torch.float32)
         if for_compression:
             node_attr = [-1 for i in range(len(doc))]
         edge_index = []
         edge_attr = []
         for i, token in enumerate(doc):
-            if token.dep_ != 'ROOT':
-                token_id = self.nlp.vocab.strings[token.lemma_]
-                if token_id in self.nlp.vocab.vectors:
+            if token[2] != 'root':
+                token_id = self.nlp.get_word_id(token[3])
+                if token_id != -1:
                     if for_compression:
                         node_attr[i] = token_id
                     else:
                         node_attr[i] = torch.tensor(
-                            self.nlp.vocab.vectors[token_id])
-                edge_index.append([token.head.i, i])
+                            self.nlp.get_word_vector(token[3]))
+                edge_index.append([token[1] - 1, i])
                 # edge_attr.append(vectorized_dep)
                 edge_attr.append(self.settings["tokens_dep_weight"])
             # adding sequential edges between tokens - uncomment the codes for vectorized edges
@@ -105,7 +118,7 @@ class DependencyGraphConstructor(GraphConstructor):
         else:
             data['dep'].x = self.__build_initial_dependency_vectors(dep_length)
             data['word'].x = torch.zeros(
-                (len(doc), self.nlp.vocab.vectors_length), dtype=torch.float32)
+                (len(doc), self.nlp.get_dimension()), dtype=torch.float32)
         word_dep_edge_index = []
         dep_word_edge_index = []
         word_word_edge_index = []
@@ -114,19 +127,19 @@ class DependencyGraphConstructor(GraphConstructor):
         word_word_edge_attr = []
         for i, token in enumerate(doc):
             # node_tokens.append(token.lemma_)
-            token_id = self.nlp.vocab.strings[token.lemma_]
-            if token_id in self.nlp.vocab.vectors:
+            token_id = self.nlp.get_word_id(token[3])
+            if token_id != -1:
                 if for_compression:
                     data['word'].x[i] = token_id
                 else:
                     data['word'].x[i] = torch.tensor(
-                        self.nlp.vocab.vectors[token_id])
-            if token.dep_ != 'ROOT':
-                dep_idx = self.__find_dep_index(token.dep_)
+                        self.nlp.get_word_vector(token[3]))
+            if token[2] != 'root':
+                dep_idx = self.__find_dep_index(token[2])
                 # not found protection
                 if dep_idx != -1:
                     # edge from head token to dependency node
-                    word_dep_edge_index.append([token.head.i, dep_idx])
+                    word_dep_edge_index.append([token[1] - 1, dep_idx])
                     word_dep_edge_attr.append(
                         self.settings["tokens_dep_weight"])
                     # edge from dependency node to the token
@@ -159,7 +172,12 @@ class DependencyGraphConstructor(GraphConstructor):
         pass
 
     def to_graph_indexed(self, text: str):
-        doc = self.nlp(text)
+
+        doc = []
+        token_list = self.token_lemma(text)
+        for word in token_list.iter_words():
+            doc.append((word, word.head, word.deprel, word.lemma))
+
         if len(doc) < 2:
             return
         if self.use_node_dependencies:
@@ -170,20 +188,21 @@ class DependencyGraphConstructor(GraphConstructor):
     def prepare_loaded_data(self, graph):
         if self.use_node_dependencies:
             words = torch.zeros(
-                (len(graph['word'].x), self.nlp.vocab.vectors_length), dtype=torch.float32)
+                (len(graph['word'].x), self.nlp.get_dimension()), dtype=torch.float32)
             for i in range(len(graph['word'].x)):
-                if graph['word'].x[i] in self.nlp.vocab.vectors:
+                if graph['word'].x[i] in self.nlp.get_words():
                     words[i] = torch.tensor(
-                        self.nlp.vocab.vectors[graph['word'].x[i]])
+                        self.nlp.get_word_vector(graph['word'].x[i]))
             graph['word'].x = words
             graph['dep'].x = self.__build_initial_dependency_vectors(
                 len(self.dependencies))
         else:
             words = torch.zeros(
-                (len(graph.x), self.nlp.vocab.vectors_length), dtype=torch.float32)
+                (len(graph.x), self.nlp.get_dimension()), dtype=torch.float32)
             for i in range(len(graph.x)):
-                if graph.x[i] in self.nlp.vocab.vectors:
-                    words[i] = torch.tensor(self.nlp.vocab.vectors[graph.x[i]])
+                if graph.x[i] in self.nlp.get_words():
+                    words[i] = torch.tensor(
+                        self.nlp.get_word_vector(graph.x[i]))
             graph.x = words
         for t in graph.edge_types:
             if len(graph[t].edge_index) == 0:
