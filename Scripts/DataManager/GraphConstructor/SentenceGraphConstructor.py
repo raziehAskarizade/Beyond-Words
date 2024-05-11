@@ -18,6 +18,7 @@ import os
 # farsi
 import fasttext
 import stanza
+import copy
 
 
 class SentenceGraphConstructor(SequentialGraphConstructor):
@@ -46,20 +47,24 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
     def to_graph(self, text: str):
 
         # farsi
+        doc_sentences = []
         doc = []
+        doc.append(doc_sentences)
         token_list = self.token_lemma(text)
-        for sentence in token_list.sentences:
+        for idx, sentence in enumerate(token_list.sentences):
+            doc_sentences.append((sentence.text, sentence.tokens[0].text, idx))
             for token in sentence.words:
-                doc.append((token.text, token.lemma))
+                doc.append((token.text, idx))
 
-        if len(doc) < 2:
+        if len(doc[1:]) < 2:
             return
         return self.__create_sentence_graph(doc)
 
     def __create_sentence_graph(self, doc, for_compression=False):
         sequential_data = super()._create_graph(doc, for_compression)  # homogeneous
         data = HeteroData()
-        sentence_embeddings = [sent.vector for sent in doc.sents]
+        sentence_embeddings = [
+            self.nlp.get_sentence_vector(sent[0]) for sent in doc[0]]
         data['word'].x = sequential_data.x
         if for_compression:
             if self.use_general_node:
@@ -78,7 +83,7 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
         sentence_word_edge_attr = []
         word_sentence_edge_attr = []
         if self.use_general_node:
-            for i, _x in enumerate(doc.sents):
+            for i, _x in enumerate(doc[1:]):
                 # connecting sentences to general node
                 sentence_general_edge_index.append([i, 0])
                 general_sentence_edge_index.append([0, i])
@@ -88,10 +93,13 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
                 general_sentence_edge_attr.append(
                     self.settings['general_sentence_weight'])
         sent_index = -1
-        for i, token in enumerate(doc):
+        doc_copy = copy.deepcopy(doc)
+        for i, token in enumerate(doc_copy[1:]):
             # connecting words to sentences
-            if token.is_sent_start:
-                sent_index += 1
+            for j, sent_start in enumerate(doc_copy[0]):
+                if token[0] == sent_start[1] and token[1] == sent_start[2]:
+                    sent_index += 1
+                    doc_copy[0].pop(j)
             word_sentence_edge_index.append([i, sent_index])
             sentence_word_edge_index.append([sent_index, i])
             word_sentence_edge_attr.append(
@@ -120,18 +128,26 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
         return data
 
     def to_graph_indexed(self, text: str):
-        doc = self.nlp(text)
-        if len(doc) < 2:
+        doc_sentences = []
+        doc = []
+        doc.append(doc_sentences)
+        token_list = self.token_lemma(text)
+        for idx, sentence in enumerate(token_list.sentences):
+            doc_sentences.append((sentence.text, sentence.tokens[0].text, idx))
+            for token in sentence.words:
+                doc.append((token.text, idx))
+
+        if len(doc[1:]) < 2:
             return
         return self.__create_sentence_graph(doc, for_compression=True)
 
     def prepare_loaded_data(self, graph):
         words = torch.zeros(
-            (len(graph['word'].x), self.nlp.vocab.vectors_length), dtype=torch.float32)
+            (len(graph['word'].x), self.nlp.get_dimension()), dtype=torch.float32)
         for i in range(len(graph['word'].x)):
-            if graph['word'].x[i] in self.nlp.vocab.vectors:
+            if graph['word'].x[i] in self.nlp.get_words():
                 words[i] = torch.tensor(
-                    self.nlp.vocab.vectors[graph['word'].x[i]])
+                    self.nlp.get_word_vector(graph['word'].x[i]))
         graph['word'].x = words
         if self.use_general_node:
             graph = self._add_multiple_general_nodes(
