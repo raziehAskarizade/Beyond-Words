@@ -49,9 +49,9 @@ class SequentialGraphConstructor(GraphConstructor):
         if len(doc) < 2:
             return
         if self.use_general_node:
-            return self._create_graph_with_general_node([t[0] for t in doc])
+            return self._create_graph_with_general_node(doc)
         else:
-            return self._create_graph([t[0] for t in doc])
+            return self._create_graph(doc)
 
     def _create_graph(self, doc, for_compression=False):
         docs_length = len(doc)
@@ -62,7 +62,7 @@ class SequentialGraphConstructor(GraphConstructor):
         edge_index = []
         edge_attr = []
         for i, token in enumerate(doc):
-            print(token[1])
+            # print(token[1])
             token_id = self.nlp.get_word_id(token[1])
             if token_id != -1:
                 if for_compression:
@@ -162,9 +162,9 @@ class SequentialGraphConstructor(GraphConstructor):
         if len(doc) < 2:
             return
         if self.use_general_node:
-            return self._create_graph_with_general_node([t[0] for t in doc], for_compression=True)
+            return self._create_graph_with_general_node(doc, for_compression=True)
         else:
-            return self._create_graph([t[0] for t in doc], for_compression=True)
+            return self._create_graph(doc, for_compression=True)
 
     def prepare_loaded_data(self, graph):
         if self.use_general_node:

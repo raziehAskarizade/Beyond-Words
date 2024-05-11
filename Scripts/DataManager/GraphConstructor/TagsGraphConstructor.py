@@ -93,23 +93,24 @@ class TagsGraphConstructor(GraphConstructor):
 
             if token_id != -1:
                 if for_compression:
-                    data['word'].x[token.i] = token_id
+                    # token.i is just enumerator i :/
+                    data['word'].x[i] = token_id
                 else:
-                    data['word'].x[token.i] = torch.tensor(
+                    data['word'].x[i] = torch.tensor(
                         self.nlp.get_word_vector(token[1]))
 
             tag_idx = self.__find_tag_index(token[2])
             if tag_idx != -1:
-                word_tag_edge_index.append([token.i, tag_idx])
+                word_tag_edge_index.append([i, tag_idx])
                 word_tag_edge_attr.append(self.settings["tokens_tag_weight"])
-                tag_word_edge_index.append([tag_idx, token.i])
+                tag_word_edge_index.append([tag_idx, i])
                 tag_word_edge_attr.append(self.settings["tokens_tag_weight"])
             # adding sequential edges between tokens - uncomment the codes for vectorized edges
-            if token.i != len(doc) - 1:
+            if i != len(doc) - 1:
                 # using zero vectors for edge features
-                word_word_edge_index.append([token.i, token.i + 1])
+                word_word_edge_index.append([i, i + 1])
                 word_word_edge_attr.append(self.settings["token_token_weight"])
-                word_word_edge_index.append([token.i + 1, token.i])
+                word_word_edge_index.append([i + 1, i])
                 word_word_edge_attr.append(self.settings["token_token_weight"])
         data['tag', 'tag_word', 'word'].edge_index = torch.transpose(torch.tensor(
             tag_word_edge_index, dtype=torch.int32), 0, 1) if len(tag_word_edge_index) > 0 else torch.empty(2, 0, dtype=torch.int32)

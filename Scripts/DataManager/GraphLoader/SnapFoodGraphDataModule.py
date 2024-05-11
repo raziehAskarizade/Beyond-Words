@@ -9,14 +9,14 @@ from typing import Dict
 import pandas as pd
 from torch_geometric.loader import DataLoader
 
-from scripts.graph_constructors.CoOccurrenceGraphConstructor import CoOccurrenceGraphConstructor
-from scripts.graph_constructors.SequentialGraphConstructor import SequentialGraphConstructor
-from scripts.graph_constructors.GraphConstructor import GraphConstructor, TextGraphType
-from scripts.graph_data_modules.GraphDataModule import GraphDataModule
+from Scripts.DataManager.GraphConstructor.CoOccurrenceGraphConstructor import CoOccurrenceGraphConstructor
+from Scripts.DataManager.GraphConstructor.SequentialGraphConstructor import SequentialGraphConstructor
+from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor, TextGraphType
+from Scripts.DataManager.GraphLoader.GraphDataModule import GraphDataModule
 from torch.utils.data.dataset import random_split, Subset
 import torch
-from scripts.datasets.GraphConstructorDataset import GraphConstructorDataset, GraphConstructorDatasetRanged
-from scripts.configs.ConfigClass import Config
+from Scripts.DataManager.Datasets.GraphConstructorDataset import GraphConstructorDataset, GraphConstructorDatasetRanged
+from Scripts.Configs.ConfigClass import Config
 
 
 class SnapFoodGraphDataModule(GraphDataModule):
@@ -34,8 +34,8 @@ class SnapFoodGraphDataModule(GraphDataModule):
         self.reweights = reweights
         self.removals = removals
         self.graphs_path = graphs_path if graphs_path!='' else 'data/GraphData/SnapFood'
-        self.train_data_path = 'data/SnapFood/train.csv' if train_data_path == '' else train_data_path
-        self.test_data_path = 'data/SnapFood/test.csv' if test_data_path == '' else test_data_path
+        self.train_data_path = 'data/SnapFood/train_sm.csv' if train_data_path == '' else train_data_path
+        self.test_data_path = 'data/SnapFood/test_sm.csv' if test_data_path == '' else test_data_path
         self.labels = None
         self.dataset = None
         self.shuffle = shuffle
@@ -53,8 +53,8 @@ class SnapFoodGraphDataModule(GraphDataModule):
         self.test_df.columns = ['comment', 'label', 'label_id']
         self.train_df['comment'] = self.train_df['comment'].astype(str)
         self.test_df['comment'] = self.test_df['comment'].astype(str)
-        self.train_df = self.train_df[['label_id', 'Text']]
-        self.test_df = self.test_df[['label_id', 'Text']]
+        self.train_df = self.train_df[['label_id', 'comment']]
+        self.test_df = self.test_df[['label_id', 'comment']]
         self.df = pd.concat([self.train_df, self.test_df])
         self.end_data_load = self.end_data_load if self.end_data_load>0 else self.df.shape[0]
         self.end_data_load = self.end_data_load if self.end_data_load < self.df.shape[0] else self.df.shape[0] 
@@ -65,7 +65,7 @@ class SnapFoodGraphDataModule(GraphDataModule):
         labels = labels.to_numpy()
         labels = torch.from_numpy(labels)
         self.num_classes = len(torch.unique(labels))
-        self.labels = torch.nn.functional.one_hot((labels-1).to(torch.int64)).to(torch.float32).to(self.device)
+        self.labels = torch.nn.functional.one_hot((labels).to(torch.int64)).to(torch.float32).to(self.device)
         
         self.num_data = self.df.shape[0]
         self.train_range = range(int((1-self.val_size-self.test_size)*self.num_data))
