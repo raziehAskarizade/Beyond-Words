@@ -63,8 +63,8 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
     def __create_sentence_graph(self, doc, for_compression=False):
         sequential_data = super()._create_graph(doc, for_compression)  # homogeneous
         data = HeteroData()
-        sentence_embeddings = [
-            self.nlp.get_sentence_vector(sent[0]) for sent in doc[0]]
+        sentence_embeddings = np.array(
+            [self.nlp.get_sentence_vector(sent[0]) for sent in doc[0]])
         data['word'].x = sequential_data.x
         if for_compression:
             if self.use_general_node:

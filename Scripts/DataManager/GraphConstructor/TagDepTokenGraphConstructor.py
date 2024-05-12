@@ -5,10 +5,13 @@ import numpy as np
 from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstructor
 from torch_geometric.data import HeteroData
 from Scripts.Configs.ConfigClass import Config
-import spacy
 import torch
 import os
 from typing import List, Dict, Tuple
+
+import stanza
+import fasttext
+import copy
 
 
 class TagDepTokenGraphConstructor(GraphConstructor):
@@ -27,15 +30,35 @@ class TagDepTokenGraphConstructor(GraphConstructor):
                          "general_token_weight": 1, "general_sentence_weight": 1, "token_sentence_weight": 1}
         self.use_sentence_nodes = use_sentence_nodes
         self.use_general_node = use_general_node
-        self.var.nlp_pipeline = self.config.spacy.pipeline
+
+        self.var.nlp_pipeline = self.config.fa.pipeline
+
         self.var.graph_num = len(self.raw_data)
-        self.nlp = spacy.load(self.var.nlp_pipeline)
-        self.dependencies = self.nlp.get_pipe("parser").labels
-        self.tags = self.nlp.get_pipe("tagger").labels
+
+        # farsi
+        self.nlp = fasttext.load_model(self.var.nlp_pipeline)
+        self.token_lemma = stanza.Pipeline("fa")
+
+        self.dependencies = ['acl', 'acl:relcl', 'advcl', 'advcl:relcl', 'advmod', 'advmod:emph', 'advmod:lmod', 'amod', 'appos', 'aux', 'aux:pass', 'case', 'cc', 'cc:preconj', 'ccomp', 'clf', 'compound', 'compound:lvc', 'compound:prt', 'compound:redup', 'compound:svc', 'conj', 'cop', 'csubj', 'csubj:outer', 'csubj:pass', 'dep', 'det', 'det:numgov', 'det:nummod', 'det:poss', 'discourse',
+                             'dislocated', 'expl', 'expl:impers', 'expl:pass', 'expl:pv', 'fixed', 'flat', 'flat:foreign', 'flat:name', 'goeswith', 'iobj', 'list', 'mark', 'nmod', 'nmod:poss', 'nmod:tmod', 'nsubj', 'nsubj:outer', 'nsubj:pass', 'nummod', 'nummod:gov', 'obj', 'obl', 'obl:agent', 'obl:arg', 'obl:lmod', 'obl:tmod', 'orphan', 'parataxis', 'punct', 'reparandum', 'root', 'vocative', 'xcomp']
+
+        self.tags = ['NOUN', 'DET', 'PROPN', 'NUM', 'VERB', 'PART', 'PRON',
+                     'SCONJ', 'ADJ', 'ADP', 'PUNCT', 'ADV', 'AUX', 'SYM', 'INTJ', 'CCONJ', 'X']
+
         self.num_general_nodes = num_general_nodes
 
     def to_graph(self, text: str):
-        doc = self.nlp(text)
+        # farsi
+        doc_sentences = []
+        doc = []
+        doc.append(doc_sentences)
+        token_list = self.token_lemma(text)
+        for idx, sentence in enumerate(token_list.sentences):
+            doc_sentences.append((sentence.text, sentence.tokens[0].text, idx))
+            for word in sentence.words:
+                doc.append((idx, word.text, word.lemma,
+                            word.upos, word.head, word.deprel))
+
         # if len(doc) < 2:
         #     return
         if self.use_sentence_nodes:
@@ -66,11 +89,12 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         return torch.arange(0, tags_length)
 
     def __build_initial_general_vector(self, num: int = 1):
-        return torch.zeros((num, self.nlp.vocab.vectors_length), dtype=torch.float32)
+        return torch.zeros((num, self.nlp.get_dimension()), dtype=torch.float32)
 
     def __create_graph_with_sentences(self, doc, for_compression=False):
         data = self.__create_graph(doc, for_compression, False)
-        sentence_embeddings = np.array([sent.vector for sent in doc.sents])
+        sentence_embeddings = np.array(
+            [self.nlp.get_sentence_vector(sent[0]) for sent in doc[0]])
         data['sentence'].x = torch.tensor(
             sentence_embeddings, dtype=torch.float32)
         if self.use_general_node:
@@ -87,7 +111,7 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         sentence_word_edge_attr = []
         word_sentence_edge_attr = []
         if self.use_general_node:
-            for i, _x in enumerate(doc.sents):
+            for i, _x in enumerate(doc[1:]):
                 # connecting sentences to general node
                 sentence_general_edge_index.append([i, 0])
                 general_sentence_edge_index.append([0, i])
@@ -97,10 +121,13 @@ class TagDepTokenGraphConstructor(GraphConstructor):
                 general_sentence_edge_attr.append(
                     self.settings['general_sentence_weight'])
         sent_index = -1
-        for i, token in enumerate(doc):
+        doc_copy = copy.deepcopy(doc)
+        for i, token in enumerate(doc_copy[1:]):
             # connecting words to sentences
-            if token.is_sent_start:
-                sent_index += 1
+            for j, sent_start in enumerate(doc_copy[0]):
+                if token[1] == sent_start[1] and token[0] == sent_start[2]:
+                    sent_index += 1
+                    doc_copy[0].pop(j)
             word_sentence_edge_index.append([i, sent_index])
             sentence_word_edge_index.append([sent_index, i])
             word_sentence_edge_attr.append(
@@ -142,7 +169,7 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         else:
             data['dep'].x = self.__build_initial_dependency_vectors(dep_length)
             data['word'].x = torch.zeros(
-                (len(doc), self.nlp.vocab.vectors_length), dtype=torch.float32)
+                (len(doc), self.nlp.get_dimension()), dtype=torch.float32)
             data['tag'].x = self.__build_initial_tag_vectors(tag_length)
             if use_general_node:
                 data['general'].x = self.__build_initial_general_vector()
@@ -160,26 +187,26 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         word_word_edge_attr = []
         word_general_edge_attr = []
         general_word_edge_attr = []
-        for i, token in enumerate(doc):
-            token_id = self.nlp.vocab.strings[token.lemma_]
-            if token_id in self.nlp.vocab.vectors:
+        for i, token in enumerate(doc[1:]):
+            token_id = self.nlp.get_word_id(token[2])
+            if token_id != -1:
                 if for_compression:
                     data['word'].x[i] = token_id
                 else:
                     data['word'].x[i] = torch.tensor(
-                        self.nlp.vocab.vectors[token_id])
+                        self.nlp.get_word_vector(token[2]))
             # adding dependency edges
-            if token.dep_ != 'ROOT':
-                dep_idx = self.__find_dep_index(token.dep_)
+            if token[5] != 'root':
+                dep_idx = self.__find_dep_index(token[5])
                 if dep_idx != -1:
-                    word_dep_edge_index.append([token.head.i, dep_idx])
+                    word_dep_edge_index.append([token[4], dep_idx])
                     word_dep_edge_attr.append(
                         self.settings["dep_token_weight"])
                     dep_word_edge_index.append([dep_idx, i])
                     dep_word_edge_attr.append(
                         self.settings["dep_token_weight"])
             # adding tag edges
-            tag_idx = self.__find_tag_index(token.tag_)
+            tag_idx = self.__find_tag_index(token[3])
             if tag_idx != -1:
                 word_tag_edge_index.append([i, tag_idx])
                 word_tag_edge_attr.append(self.settings["tag_token_weight"])
@@ -236,7 +263,15 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         pass
 
     def to_graph_indexed(self, text: str):
-        doc = self.nlp(text)
+        doc_sentences = []
+        doc = []
+        doc.append(doc_sentences)
+        token_list = self.token_lemma(text)
+        for idx, sentence in enumerate(token_list.sentences):
+            doc_sentences.append((sentence.text, sentence.tokens[0].text, idx))
+            for word in sentence.words:
+                doc.append((idx, word.text, word.lemma,
+                            word.upos, word.head, word.deprel))
         # if len(doc) < 2:
         #     return
         if self.use_sentence_nodes:
@@ -246,11 +281,11 @@ class TagDepTokenGraphConstructor(GraphConstructor):
 
     def prepare_loaded_data(self, graph):
         words = torch.zeros(
-            (len(graph['word'].x), self.nlp.vocab.vectors_length), dtype=torch.float32)
+            (len(graph['word'].x), self.nlp.get_dimension()), dtype=torch.float32)
         for i in range(len(graph['word'].x)):
-            if graph['word'].x[i] in self.nlp.vocab.vectors:
+            if graph['word'].x[i] in self.nlp.get_words():
                 words[i] = torch.tensor(
-                    self.nlp.vocab.vectors[graph['word'].x[i]])
+                    self.nlp.get_word_vector(graph['word'].x[i]))
         graph['word'].x = words
         graph['dep'].x = self.__build_initial_dependency_vectors(
             len(self.dependencies))

@@ -76,7 +76,7 @@ class DependencyGraphConstructor(GraphConstructor):
                     else:
                         node_attr[i] = torch.tensor(
                             self.nlp.get_word_vector(token[3]))
-                edge_index.append([token[1] - 1, i])
+                edge_index.append([token[1], i])
                 # edge_attr.append(vectorized_dep)
                 edge_attr.append(self.settings["tokens_dep_weight"])
             # adding sequential edges between tokens - uncomment the codes for vectorized edges
@@ -139,7 +139,7 @@ class DependencyGraphConstructor(GraphConstructor):
                 # not found protection
                 if dep_idx != -1:
                     # edge from head token to dependency node
-                    word_dep_edge_index.append([token[1] - 1, dep_idx])
+                    word_dep_edge_index.append([token[1], dep_idx])
                     word_dep_edge_attr.append(
                         self.settings["tokens_dep_weight"])
                     # edge from dependency node to the token
