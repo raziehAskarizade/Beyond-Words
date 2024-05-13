@@ -31,16 +31,29 @@ class SentimentGraphConstructor(TagDepTokenGraphConstructor):
             .__init__(texts, save_path, config, load_preprocessed_data,
                       naming_prepend, use_compression, use_sentence_nodes, use_general_node, start_data_load, end_data_load, num_general_nodes)
         # self.settings["token_sentiment_weight"] = 2
-        self.nlp.add_pipe('spacytextblob')
+
+    def persion_polarity(self, dataset_path="C:/Users/razieh/Downloads/Beyond-Words/data/PerSent.xlsx"):
+        xlsx = pd.ExcelFile(dataset_path)
+        df = xlsx.parse('Dataset')
+        return df
 
     def to_graph(self, text: str):
-        doc = self.nlp(text)
+        # farsi
+        doc_sentences = []
+        doc = []
+        doc.append(doc_sentences)
+        token_list = self.token_lemma(text)
+        for idx, sentence in enumerate(token_list.sentences):
+            doc_sentences.append((sentence.text, sentence.tokens[0].text, idx))
+            for word in sentence.words:
+                doc.append((idx, word.text, word.lemma,
+                            word.upos, word.head, word.deprel))
         # if len(doc) < 2:
         #     return
         return self.__create_sentiment_graph(doc)
 
     def _build_initial_sentiment_vector(self):
-        return torch.zeros((2, self.nlp.vocab.vectors_length), dtype=torch.float32)
+        return torch.zeros((2, self.nlp.get_dimension()), dtype=torch.float32)
 
     def __create_sentiment_graph(self, doc, for_compression=False):
         if for_compression:
@@ -56,17 +69,22 @@ class SentimentGraphConstructor(TagDepTokenGraphConstructor):
         word_sentiment_edge_index = []
         sentiment_word_edge_attr = []
         word_sentiment_edge_attr = []
-        for i, token in enumerate(doc):
-            if token._.blob.polarity > 0:
-                word_sentiment_edge_index.append([i, 1])
-                sentiment_word_edge_index.append([1, i])
-                word_sentiment_edge_attr.append(abs(token._.blob.polarity))
-                sentiment_word_edge_attr.append(abs(token._.blob.polarity))
-            if token._.blob.polarity < 0:
-                word_sentiment_edge_index.append([i, 0])
-                sentiment_word_edge_index.append([0, i])
-                word_sentiment_edge_attr.append(abs(token._.blob.polarity))
-                sentiment_word_edge_attr.append(abs(token._.blob.polarity))
+
+        df = self.persion_polarity()
+        for i, token in enumerate(doc[1:]):
+            if len(df[df['Words'] == token[2]]) != 0:
+                row = df[df['Words'] == token[2]]
+                polarity = max(row['Polarity'])
+                if polarity > 0:
+                    word_sentiment_edge_index.append([i, 1])
+                    sentiment_word_edge_index.append([1, i])
+                    word_sentiment_edge_attr.append(abs(polarity))
+                    sentiment_word_edge_attr.append(abs(polarity))
+                if polarity < 0:
+                    word_sentiment_edge_index.append([i, 0])
+                    sentiment_word_edge_index.append([0, i])
+                    word_sentiment_edge_attr.append(abs(polarity))
+                    sentiment_word_edge_attr.append(abs(polarity))
         data['word', 'word_sentiment', 'sentiment'].edge_index = torch.transpose(torch.tensor(
             word_sentiment_edge_index, dtype=torch.int32), 0, 1) if len(word_sentiment_edge_index) > 0 else torch.empty(2, 0, dtype=torch.int32)
         data['sentiment', 'sentiment_word', 'word'].edge_index = torch.transpose(torch.tensor(
@@ -78,7 +96,16 @@ class SentimentGraphConstructor(TagDepTokenGraphConstructor):
         return data
 
     def to_graph_indexed(self, text: str):
-        doc = self.nlp(text)
+        # farsi
+        doc_sentences = []
+        doc = []
+        doc.append(doc_sentences)
+        token_list = self.token_lemma(text)
+        for idx, sentence in enumerate(token_list.sentences):
+            doc_sentences.append((sentence.text, sentence.tokens[0].text, idx))
+            for word in sentence.words:
+                doc.append((idx, word.text, word.lemma,
+                            word.upos, word.head, word.deprel))
         # if len(doc) < 2:
         #     return
         return self.__create_sentiment_graph(doc, for_compression=True)
