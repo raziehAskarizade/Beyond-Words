@@ -145,14 +145,21 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
             doc, unique_words, unique_map)
         return self.__create_graph(unique_word_ids, co_occurrence_matrix)
 
+    def get_word_by_id(self):
+        words_id = {}
+        for word in self.nlp.get_words():
+            words_id[self.nlp.get_word_id(word)] = word
+        return words_id
+
     def prepare_loaded_data(self, graph):
         nodes = torch.zeros(
             (len(graph.x), self.nlp.get_dimension()), dtype=torch.float32)
+
+        word_ids = self.get_word_by_id()
         for i in range(len(graph.x)):
-            print(graph.x[i])
-            if int(graph.x[i]) != -1:
-                # TODO how can set this ?
-                nodes[i] = torch.tensor(self.nlp.get_word_vector(graph.x[i]))
+            if word_ids.get(int(graph.x[i])) is not None:
+                nodes[i] = torch.tensor(
+                    self.nlp.get_word_vector(word_ids[int(graph.x[i])]))
         return Data(x=nodes, edge_index=graph.edge_index, edge_attr=graph.edge_attr)
 
     def draw_graph(self, idx: int):

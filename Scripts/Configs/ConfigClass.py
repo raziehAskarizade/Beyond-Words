@@ -38,6 +38,8 @@ class Datasets:
     def __init__(self, json_data: dict):
         if 'snap_food' in json_data:
             self.snap_food = Dataset(json_data['snap_food'])
+        if 'amazon_review' in json_data:
+            self.amazon_review = Dataset(json_data=['amazon_review'])
 
 
 class Dataset:

@@ -141,13 +141,21 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
             return
         return self.__create_sentence_graph(doc, for_compression=True)
 
+    def get_word_by_id(self):
+        words_id = {}
+        for word in self.nlp.get_words():
+            words_id[self.nlp.get_word_id(word)] = word
+        return words_id
+
     def prepare_loaded_data(self, graph):
         words = torch.zeros(
             (len(graph['word'].x), self.nlp.get_dimension()), dtype=torch.float32)
+
+        word_ids = self.get_word_by_id()
         for i in range(len(graph['word'].x)):
-            if graph['word'].x[i] in self.nlp.get_words():
+            if word_ids.get(int(graph['word'].x[i])) is not None:
                 words[i] = torch.tensor(
-                    self.nlp.get_word_vector(graph['word'].x[i]))
+                    self.nlp.get_word_vector(word_ids[int(graph['word'].x[i])]))
         graph['word'].x = words
         if self.use_general_node:
             graph = self._add_multiple_general_nodes(
