@@ -9,10 +9,12 @@ from Scripts.DataManager.GraphConstructor.GraphConstructor import GraphConstruct
 from torch_geometric.data import Data, HeteroData
 from Scripts.Configs.ConfigClass import Config
 import torch
+from stanza.pipeline.core import DownloadMethod
 
 # farsi
 import fasttext
 import stanza
+import time
 
 
 class SequentialGraphConstructor(GraphConstructor):
@@ -34,7 +36,11 @@ class SequentialGraphConstructor(GraphConstructor):
         self.var.graph_num = len(self.raw_data)
 
         # farsi
+        print("AAAA")
+        time.sleep(10)
         self.nlp = fasttext.load_model(self.var.nlp_pipeline)
+        print("BBBB")
+        time.sleep(10)
         self.token_lemma = stanza.Pipeline("fa")
 
         self.num_general_nodes = num_general_nodes

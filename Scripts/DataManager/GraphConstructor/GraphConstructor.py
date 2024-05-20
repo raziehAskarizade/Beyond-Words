@@ -18,7 +18,7 @@ from Scripts.Configs.ConfigClass import Config
 from enum import Enum
 from flags import Flags
 from Scripts.Utils.GraphUtilities import reweight_hetero_graph
-
+import time
 
 class TextGraphType(Flags):
     CO_OCCURRENCE = 1
@@ -75,8 +75,15 @@ class GraphConstructor(ABC):
         self.load_preprocessed_data = True
         if load_preprocessed_data:
             self.load_var()
+            
+            print(f'self.start_data_load: {self.start_data_load}')
+            print(f'self.end_data_load: {self.end_data_load}')
+            print(f'self.saving_batch_size: {self.saving_batch_size}')
+            
+            time.sleep(10)
             for i in tqdm(range(self.start_data_load, self.end_data_load, self.saving_batch_size), desc=" Loding Graphs From File "):
-                self.load_data_range(i, i + self.end_data_load)
+                self.load_data_range(i, min(i + self.saving_batch_size, self.end_data_load))
+                print("after loading data and pass")
         else:
             # save the content
             save_start = self.start_data_load
@@ -201,14 +208,18 @@ class GraphConstructor(ABC):
                 path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt')))
 
     def load_data_range(self, start: int, end: int):
+        print(f"data path: {path.join(self.save_path, f'{start}_{end}_compressed.pt')}")
+        time.sleep(10)
         data_list = torch.load(
             path.join(self.save_path, f'{start}_{end}_compressed.pt'))
         index = 0
-        for i in range(start, end):
-            self._graphs[i -
-                         self.start_data_load] = self.prepare_loaded_data(data_list[index])
+        print("first step after loading data")
+        time.sleep(10)
+        for i in tqdm(range(start, end), desc="Prepare loaded data"):
+            self._graphs[i - self.start_data_load] = self.prepare_loaded_data(data_list[index])
             index += 1
-        pass
+        print("before pass")
+        time.sleep(10)
 
     def save_data_compressed(self, idx: int):
         graph = self.to_graph_indexed(self.raw_data[idx])
