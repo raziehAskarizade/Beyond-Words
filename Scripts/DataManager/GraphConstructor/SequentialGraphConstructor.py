@@ -46,13 +46,18 @@ class SequentialGraphConstructor(GraphConstructor):
         self.num_general_nodes = num_general_nodes
 
     def to_graph(self, text: str):
-        doc = []
-        token_list = self.token_lemma(text)
-        for sentence in token_list.sentences:
-            for token in sentence.words:
-                doc.append((token.text, token.lemma))
 
-        if len(doc) < 2:
+        # farsi
+        doc_sentences = []
+        doc = []
+        doc.append(doc_sentences)
+        token_list = self.token_lemma(text)
+        for idx, sentence in enumerate(token_list.sentences):
+            doc_sentences.append((sentence.text, sentence.tokens[0].text, idx))
+            for token in sentence.words:
+                doc.append((token.text, idx, token.lemma))
+
+        if len(doc[1:]) < 2:
             return
         if self.use_general_node:
             return self._create_graph_with_general_node(doc)
@@ -60,23 +65,23 @@ class SequentialGraphConstructor(GraphConstructor):
             return self._create_graph(doc)
 
     def _create_graph(self, doc, for_compression=False):
-        docs_length = len(doc)
+        docs_length = len(doc[1:])
         node_attr = torch.zeros(
-            (len(doc), self.nlp.get_dimension()), dtype=torch.float32)
+            (len(doc[1:]), self.nlp.get_dimension()), dtype=torch.float32)
         if for_compression:
-            node_attr = [-1 for i in range(len(doc))]
+            node_attr = [-1 for i in range(len(doc[1:]))]
         edge_index = []
         edge_attr = []
-        for i, token in enumerate(doc):
+        for i, token in enumerate(doc[1:]):
             # print(token[1])
-            token_id = self.nlp.get_word_id(token[1])
+            token_id = self.nlp.get_word_id(token[2])
             if token_id != -1:
                 if for_compression:
                     node_attr[i] = token_id
                 else:
                     node_attr[i] = torch.tensor(
-                        self.nlp.get_word_vector(token[1]))
-            if i != len(doc) - 1:
+                        self.nlp.get_word_vector(token[2]))
+            if i != len(doc[1:]) - 1:
                 # using zero vectors for edge features
                 edge_index.append([i, i + 1])
                 edge_index.append([i + 1, i])
@@ -94,25 +99,25 @@ class SequentialGraphConstructor(GraphConstructor):
         data = HeteroData()
         if for_compression:
             data['general'].x = torch.full((1,), 0, dtype=torch.float32)
-            data['word'].x = [-1 for i in range(len(doc))]
+            data['word'].x = [-1 for i in range(len(doc[1:]))]
         else:
             data['general'].x = self._build_initial_general_vector()
             data['word'].x = torch.zeros(
-                (len(doc), self.nlp.get_dimension()), dtype=torch.float32)
+                (len(doc[1:]), self.nlp.get_dimension()), dtype=torch.float32)
         word_general_edge_index = []
         general_word_edge_index = []
         word_word_edge_index = []
         word_general_edge_attr = []
         general_word_edge_attr = []
         word_word_edge_attr = []
-        for i, token in enumerate(doc):
-            token_id = self.nlp.get_word_id(token[1])
+        for i, token in enumerate(doc[1:]):
+            token_id = self.nlp.get_word_id(token[2])
             if token_id != -1:
                 if for_compression:
                     data['word'].x[i] = token_id
                 else:
                     data['word'].x[i] = torch.tensor(
-                        self.nlp.get_word_vector(token[1]))
+                        self.nlp.get_word_vector(token[2]))
             word_general_edge_index.append([i, 0])
             word_general_edge_attr.append(
                 self.settings["general_token_weight"])
@@ -120,7 +125,7 @@ class SequentialGraphConstructor(GraphConstructor):
             general_word_edge_attr.append(
                 self.settings["general_token_weight"])
             # adding sequential edges between tokens - uncomment the codes for vectorized edges
-            if i != len(doc) - 1:
+            if i != len(doc[1:]) - 1:
                 word_word_edge_index.append([i, i + 1])
                 word_word_edge_attr.append(self.settings["token_token_weight"])
                 word_word_edge_index.append([i + 1, i])
@@ -143,14 +148,19 @@ class SequentialGraphConstructor(GraphConstructor):
         node_tokens = []
         if self.use_general_node:
             node_tokens.append("gen_node")
-        doc = []
-        token_list = self.token_lemma(self.raw_data[idx])
-        for sentence in token_list.sentences:
-            for token in sentence.words:
-                doc.append((token.text, token.lemma))
 
-        for i, t in enumerate(doc):
-            node_tokens.append(t[1])
+        # farsi
+        doc_sentences = []
+        doc = []
+        doc.append(doc_sentences)
+        token_list = self.token_lemma(self.raw_data[idx])
+        for idx, sentence in enumerate(token_list.sentences):
+            doc_sentences.append((sentence.text, sentence.tokens[0].text, idx))
+            for token in sentence.words:
+                doc.append((token.text, idx, token.lemma))
+
+        for i, t in enumerate(doc[1:]):
+            node_tokens.append(t[2])
         graph_data = self.get_graph(idx)
         g = to_networkx(graph_data)
         layout = nx.spring_layout(g)
@@ -159,13 +169,17 @@ class SequentialGraphConstructor(GraphConstructor):
         nx.draw_networkx_labels(g, pos=layout, labels=words_dict)
 
     def to_graph_indexed(self, text: str):
+        # farsi
+        doc_sentences = []
         doc = []
+        doc.append(doc_sentences)
         token_list = self.token_lemma(text)
-        for sentence in token_list.sentences:
+        for idx, sentence in enumerate(token_list.sentences):
+            doc_sentences.append((sentence.text, sentence.tokens[0].text, idx))
             for token in sentence.words:
-                doc.append((token.text, token.lemma))
+                doc.append((token.text, idx, token.lemma))
 
-        if len(doc) < 2:
+        if len(doc[1:]) < 2:
             return
         if self.use_general_node:
             return self._create_graph_with_general_node(doc, for_compression=True)

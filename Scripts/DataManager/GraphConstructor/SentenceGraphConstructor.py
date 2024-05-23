@@ -54,7 +54,7 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
         for idx, sentence in enumerate(token_list.sentences):
             doc_sentences.append((sentence.text, sentence.tokens[0].text, idx))
             for token in sentence.words:
-                doc.append((token.text, idx))
+                doc.append((token.text, idx, token.lemma))
 
         if len(doc[1:]) < 2:
             return
@@ -135,7 +135,7 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
         for idx, sentence in enumerate(token_list.sentences):
             doc_sentences.append((sentence.text, sentence.tokens[0].text, idx))
             for token in sentence.words:
-                doc.append((token.text, idx))
+                doc.append((token.text, idx, token.lemma))
 
         if len(doc[1:]) < 2:
             return
