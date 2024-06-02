@@ -18,7 +18,7 @@ import os
 
 import stanza
 import fasttext
-
+from stanza.pipeline.core import DownloadMethod
 
 class CoOccurrenceGraphConstructor(GraphConstructor):
 
@@ -36,7 +36,7 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
 
         # farsi
         self.nlp = fasttext.load_model(self.var.nlp_pipeline)
-        self.token_lemma = stanza.Pipeline("fa")
+        self.token_lemma = stanza.Pipeline("fa", download_method=DownloadMethod.REUSE_RESOURCES)
 
     def to_graph(self, text: str):
         # farsi

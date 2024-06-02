@@ -1,5 +1,4 @@
-# Fardin Rastakhiz, Omid Davar @ 2023
-
+# Omid Davar @ 2023
 
 from copy import copy
 import numpy as np
@@ -24,14 +23,14 @@ import torch
 from Scripts.DataManager.Datasets.GraphConstructorDataset import GraphConstructorDataset, GraphConstructorDatasetRanged
 
 
-class AmazonReviewGraphDataModule(GraphDataModule):
+class DigiKalaGraphDataModule(GraphDataModule):
 
-    def __init__(self, config: Config, has_val: bool, has_test: bool, test_size=0.2, val_size=0.2, num_workers=2, drop_last=True, train_data_path='', test_data_path='', graphs_path='', batch_size=32, device='cpu', shuffle=False, start_data_load=0, end_data_load=-1, graph_type: TextGraphType = TextGraphType.FULL, load_preprocessed_data=True, reweights={}, removals=[], *args, **kwargs):
+    def __init__(self, config: Config, test_size=0.2, val_size=0.2, num_workers=2, drop_last=True, train_data_path='', test_data_path='', graphs_path='', batch_size=32, device='cpu', shuffle=False, start_data_load=0, end_data_load=-1, graph_type: TextGraphType = TextGraphType.FULL, load_preprocessed_data=True, reweights={}, removals=[], *args, **kwargs):
         # Sample reweight [None,None,None,None,[(("word" , "seq" , "word") , 5)]]
         # 5 is weight in above code
         # (("word" , "seq" , "word") , 5)
-        super(AmazonReviewGraphDataModule, self)\
-            .__init__(config, device, has_val, has_test, test_size, val_size, *args, **kwargs)
+        super(DigiKalaGraphDataModule, self)\
+            .__init__(config, device, test_size, val_size, *args, **kwargs)
 
         self.device = device
         self.batch_size = batch_size
@@ -40,17 +39,16 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         self.graph_type = graph_type
         self.reweights = reweights
         self.removals = removals
-        self.graphs_path = graphs_path if graphs_path != '' else 'data/GraphData/AmazonReview'
+
+        self.graphs_path = graphs_path if graphs_path != '' else 'data/GraphData/DigiKala'
         self.train_data_path = 'data/DigiKala/train_sm.csv' if train_data_path == '' else train_data_path
         self.test_data_path = 'data/DigiKala/test_sm.csv' if test_data_path == '' else test_data_path
-        self.train_data_path2 = 'data/DigiKala/train_sm2.csv'
-        self.test_data_path2 = 'data/DigiKala/test_sm2.csv'
+
         self.labels = None
         self.dataset = None
         self.shuffle = shuffle
         self.start_data_load = start_data_load
         self.end_data_load = end_data_load
-        self.num_data = 0
         self.df: pd.DataFrame = pd.DataFrame()
         self.__train_dataset, self.__val_dataset, self.__test_dataset = None, None, None
         self.load_preprocessed_data = load_preprocessed_data
@@ -60,28 +58,13 @@ class AmazonReviewGraphDataModule(GraphDataModule):
             path.join(self.config.root, self.train_data_path))
         self.test_df = pd.read_csv(
             path.join(self.config.root, self.test_data_path))
-        self.train_df2 = pd.read_csv(
-            path.join(self.config.root, self.train_data_path2))
-        self.test_df2 = pd.read_csv(
-            path.join(self.config.root, self.test_data_path2))
-        self.train_df.columns = ['Polarity', 'Title', 'Review']
-        self.test_df.columns = ['Polarity', 'Title', 'Review']
-        self.train_df['Review'] = self.train_df['Title'].astype(
-            str) + ' ' + self.train_df['Review'].astype(str)
-        self.test_df['Review'] = self.test_df['Title'].astype(
-            str) + ' ' + self.test_df['Review'].astype(str)
-        self.train_df = self.train_df[['Polarity', 'Review']]
-        self.test_df = self.test_df[['Polarity', 'Review']]
-        self.train_df2.columns = ['Polarity', 'Title', 'Review']
-        self.test_df2.columns = ['Polarity', 'Title', 'Review']
-        self.train_df2['Review'] = self.train_df2['Title'].astype(
-            str) + ' ' + self.train_df2['Review'].astype(str)
-        self.test_df2['Review'] = self.test_df2['Title'].astype(
-            str) + ' ' + self.test_df2['Review'].astype(str)
-        self.train_df2 = self.train_df2[['Polarity', 'Review']]
-        self.test_df2 = self.test_df2[['Polarity', 'Review']]
-        self.df = pd.concat([self.train_df, self.test_df,
-                            self.train_df2, self.test_df2])
+        self.train_df.columns = ['Text', 'Score', 'Suggestion']
+        self.test_df.columns = ['Text', 'Score', 'Suggestion']
+        # self.train_df['Text'] = self.train_df['Score'].astype(str) + ' ' +  self.train_df['Text'].astype(str)
+        # self.test_df['Text'] = self.test_df['Score'].astype(str) + ' ' +  self.test_df['Text'].astype(str)
+        self.train_df = self.train_df[['Suggestion', 'Text']]
+        self.test_df = self.test_df[['Suggestion', 'Text']]
+        self.df = pd.concat([self.train_df, self.test_df])
         self.end_data_load = self.end_data_load if self.end_data_load > 0 else self.df.shape[
             0]
         self.end_data_load = self.end_data_load if self.end_data_load < self.df.shape[
@@ -89,19 +72,22 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         self.df = self.df.iloc[self.start_data_load:self.end_data_load]
         self.df.index = np.arange(0, self.end_data_load - self.start_data_load)
         # activate one line below
-        labels = self.df['Polarity'][:self.end_data_load -
-                                     self.start_data_load]
-        labels = labels.apply(lambda p: 0 if p == 1 else 1).to_numpy()
+        labels = self.df['Suggestion'][:self.end_data_load -
+                                       self.start_data_load]
+        labels = labels.to_numpy()
         labels = torch.from_numpy(labels)
-        self.labels = labels.to(torch.float32).view(-1, 1).to(self.device)
+        self.num_classes = len(torch.unique(labels))
+        self.labels = torch.nn.functional.one_hot(
+            (labels-1).to(torch.int64)).to(torch.float32).to(self.device)
+
         self.num_data = self.df.shape[0]
         self.train_range = range(
             int((1-self.val_size-self.test_size)*self.num_data))
         self.val_range = range(
             self.train_range[-1]+1, int((1-self.test_size)*self.num_data))
         self.test_range = range(self.val_range[-1]+1, self.num_data)
+
         # graph_constructor = self.graph_constructors[TextGraphType.CO_OCCURRENCE]
-        self.num_classes = len(torch.unique(self.labels))
 
     def load_graphs(self):
         self.graph_constructors = self.__set_graph_constructors(
@@ -130,7 +116,6 @@ class AmazonReviewGraphDataModule(GraphDataModule):
             self.__test_dataset[key] = Subset(
                 self.dataset[key], self.test_range)
 
-            print(f'self.shuffle: {self.shuffle}')
             self.__train_dataloader[key] = DataLoader(self.__train_dataset[key], batch_size=self.batch_size,
                                                       drop_last=self.drop_last, shuffle=self.shuffle, num_workers=0, persistent_workers=False)
             self.__test_dataloader[key] = DataLoader(
@@ -144,7 +129,6 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         self.batch_size = batch_size
 
         for key in self.graph_constructors:
-            print(f'self.shuffle: {self.shuffle}')
             self.__train_dataloader[key] = DataLoader(self.__train_dataset[key], batch_size=self.batch_size,
                                                       drop_last=self.drop_last, shuffle=self.shuffle, num_workers=0, persistent_workers=False)
             self.__test_dataloader[key] = DataLoader(
@@ -178,7 +162,6 @@ class AmazonReviewGraphDataModule(GraphDataModule):
             val_dataset = Subset(dataset,  self.val_range)
             test_dataset = Subset(dataset,  self.test_range)
 
-            print(f'self.shuffle: {self.shuffle}')
             self.__train_dataloader[key] = DataLoader(
                 train_dataset, batch_size=self.batch_size, drop_last=self.drop_last, shuffle=self.shuffle, num_workers=0, persistent_workers=False)
             self.__test_dataloader[key] = DataLoader(
@@ -254,28 +237,28 @@ class AmazonReviewGraphDataModule(GraphDataModule):
         return graph_constructors
 
     def __get_co_occurrence_graph(self):
-        return CoOccurrenceGraphConstructor(self.df['Review'][:self.end_data_load], path.join(self.graphs_path, 'co_occ'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load)
+        return CoOccurrenceGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'co_occ'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load)
 
     def __get_dependency_graph(self):
-        return DependencyGraphConstructor(self.df['Review'][:self.end_data_load], path.join(self.graphs_path, 'dep'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_node_dependencies=True)
+        return DependencyGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'dep'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_node_dependencies=True)
 
     def __get_sequential_graph(self):
-        return SequentialGraphConstructor(self.df['Review'][:self.end_data_load], path.join(self.graphs_path, 'seq_gen'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_general_node=True)
+        return SequentialGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'seq_gen'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_general_node=True)
 
     def __get_dep_and_tag_graph(self):
-        return TagDepTokenGraphConstructor(self.df['Review'][:self.end_data_load], path.join(self.graphs_path, 'dep_and_tag'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=False, use_general_node=True)
+        return TagDepTokenGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'dep_and_tag'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=False, use_general_node=True)
 
     def __get_tags_graph(self):
-        return TagsGraphConstructor(self.df['Review'][:self.end_data_load], path.join(self.graphs_path, 'tags'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load)
+        return TagsGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'tags'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load)
 
     def __get_full_graph(self):
-        return TagDepTokenGraphConstructor(self.df['Review'][:self.end_data_load], path.join(self.graphs_path, 'full'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=True, use_general_node=True)
+        return TagDepTokenGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'full'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=True, use_general_node=True)
 
     def __get_sentence_graph(self):
-        return SentenceGraphConstructor(self.df['Review'][:self.end_data_load], path.join(self.graphs_path, 'sents_gen'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_general_node=True)
+        return SentenceGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'sents_gen'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_general_node=True)
 
     def __get_sentiment_graph(self):
-        return SentimentGraphConstructor(self.df['Review'][:self.end_data_load], path.join(self.graphs_path, 'sentiment'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=True, use_general_node=True)
+        return SentimentGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'sentiment'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=True, use_general_node=True)
 
     def zero_rule_baseline(self):
         return f'zero_rule baseline: {(len(self.labels[self.labels>0.5])* 100.0 / len(self.labels))  : .2f}%'

@@ -15,6 +15,7 @@ from stanza.pipeline.core import DownloadMethod
 import fasttext
 import stanza
 import time
+from stanza.pipeline.core import DownloadMethod
 
 
 class SequentialGraphConstructor(GraphConstructor):
@@ -41,7 +42,8 @@ class SequentialGraphConstructor(GraphConstructor):
         self.nlp = fasttext.load_model(self.var.nlp_pipeline)
         print("BBBB")
         time.sleep(10)
-        self.token_lemma = stanza.Pipeline("fa")
+        self.token_lemma = stanza.Pipeline(
+            "fa", download_method=DownloadMethod.REUSE_RESOURCES)
 
         self.num_general_nodes = num_general_nodes
 

@@ -17,6 +17,7 @@ import os
 
 import stanza
 import fasttext
+from stanza.pipeline.core import DownloadMethod
 
 
 class TagsGraphConstructor(GraphConstructor):
@@ -38,8 +39,9 @@ class TagsGraphConstructor(GraphConstructor):
 
         # farsi
         self.nlp = fasttext.load_model(self.var.nlp_pipeline)
-        self.token_lemma = stanza.Pipeline("fa")
 
+        self.token_lemma = stanza.Pipeline(
+            "fa", download_method=DownloadMethod.REUSE_RESOURCES)
         self.tags = ['NOUN', 'DET', 'PROPN', 'NUM', 'VERB', 'PART', 'PRON',
                      'SCONJ', 'ADJ', 'ADP', 'PUNCT', 'ADV', 'AUX', 'SYM', 'INTJ', 'CCONJ', 'X']
 

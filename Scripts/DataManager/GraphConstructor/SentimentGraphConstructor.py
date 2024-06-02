@@ -15,6 +15,7 @@ import torch
 import numpy as np
 import os
 from spacytextblob.spacytextblob import SpacyTextBlob
+from stanza.pipeline.core import DownloadMethod
 
 
 class SentimentGraphConstructor(TagDepTokenGraphConstructor):

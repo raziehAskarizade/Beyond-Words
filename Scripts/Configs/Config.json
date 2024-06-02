@@ -4,8 +4,8 @@
   },
   "datasets": {
     "snap_food": {
-      "train": "data/SnapFood/train_sm.csv",
-      "test": "data/SnapFood/test_sm.csv"
+      "train": "data/DigiKala/train_sm.csv",
+      "test": "data/DigiKala/test_sm.csv"
     },
     "amazon_review": {
       "train": "data/Amazon-Review/train_sm.csv",
