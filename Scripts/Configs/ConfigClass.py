@@ -2,12 +2,16 @@
 
 import json
 from os import path
+import stanza
+from stanza.pipeline.core import DownloadMethod
 
 
 class Config:
 
     def __init__(self, project_root_path: str, config_local_path: str = ''):
         self.root = project_root_path
+        self.token_lemma = stanza.Pipeline(
+            "fa", download_method=DownloadMethod.REUSE_RESOURCES, processors=["tokenize", "lemma"])
 
         if config_local_path == '':
             config_local_path = 'Scripts/Configs/Config.json'

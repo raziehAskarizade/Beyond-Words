@@ -40,10 +40,11 @@ class TagsGraphConstructor(GraphConstructor):
         # farsi
         self.nlp = fasttext.load_model(self.var.nlp_pipeline)
 
-        self.token_lemma = stanza.Pipeline(
-            "fa", download_method=DownloadMethod.REUSE_RESOURCES)
+        self.token_lemma = config.token_lemma
         self.tags = ['NOUN', 'DET', 'PROPN', 'NUM', 'VERB', 'PART', 'PRON',
                      'SCONJ', 'ADJ', 'ADP', 'PUNCT', 'ADV', 'AUX', 'SYM', 'INTJ', 'CCONJ', 'X']
+
+        self.word_ids = self.get_word_by_id()
 
     def to_graph(self, text: str):
         # farsi
@@ -154,11 +155,10 @@ class TagsGraphConstructor(GraphConstructor):
         words = torch.zeros(
             (len(graph['word'].x), self.nlp.get_dimension()), dtype=torch.float32)
 
-        word_ids = self.get_word_by_id()
         for i in range(len(graph['word'].x)):
-            if word_ids.get(int(graph['word'].x[i])) is not None:
+            if self.word_ids.get(int(graph['word'].x[i])) is not None:
                 words[i] = torch.tensor(
-                    self.nlp.get_word_vector(word_ids[int(graph['word'].x[i])]))
+                    self.nlp.get_word_vector(self.word_ids[int(graph['word'].x[i])]))
         graph['word'].x = words
         graph['tag'].x = self.__build_initial_tag_vectors(len(self.tags))
         for t in graph.edge_types:

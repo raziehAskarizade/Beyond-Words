@@ -228,3 +228,5 @@ logs/
 
 # temporary files:
 ml-latest-small*
+fastText
+fastText

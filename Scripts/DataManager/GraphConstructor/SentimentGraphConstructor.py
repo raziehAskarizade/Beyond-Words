@@ -10,12 +10,9 @@ from torch_geometric.utils import to_networkx
 from Scripts.DataManager.GraphConstructor.TagDepTokenGraphConstructor import TagDepTokenGraphConstructor
 from torch_geometric.data import Data, HeteroData
 from Scripts.Configs.ConfigClass import Config
-import spacy
 import torch
 import numpy as np
 import os
-from spacytextblob.spacytextblob import SpacyTextBlob
-from stanza.pipeline.core import DownloadMethod
 
 
 class SentimentGraphConstructor(TagDepTokenGraphConstructor):

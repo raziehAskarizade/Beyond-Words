@@ -20,6 +20,7 @@ import stanza
 import fasttext
 from stanza.pipeline.core import DownloadMethod
 
+
 class CoOccurrenceGraphConstructor(GraphConstructor):
 
     class _Variables(GraphConstructor._Variables):
@@ -36,7 +37,9 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
 
         # farsi
         self.nlp = fasttext.load_model(self.var.nlp_pipeline)
-        self.token_lemma = stanza.Pipeline("fa", download_method=DownloadMethod.REUSE_RESOURCES)
+        self.token_lemma = config.token_lemma
+
+        self.word_ids = self.get_word_by_id()
 
     def to_graph(self, text: str):
         # farsi
@@ -155,11 +158,10 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
         nodes = torch.zeros(
             (len(graph.x), self.nlp.get_dimension()), dtype=torch.float32)
 
-        word_ids = self.get_word_by_id()
         for i in range(len(graph.x)):
-            if word_ids.get(int(graph.x[i])) is not None:
+            if self.word_ids.get(int(graph.x[i])) is not None:
                 nodes[i] = torch.tensor(
-                    self.nlp.get_word_vector(word_ids[int(graph.x[i])]))
+                    self.nlp.get_word_vector(self.word_ids[int(graph.x[i])]))
         return Data(x=nodes, edge_index=graph.edge_index, edge_attr=graph.edge_attr)
 
     def draw_graph(self, idx: int):

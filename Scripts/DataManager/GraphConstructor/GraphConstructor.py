@@ -82,6 +82,7 @@ class GraphConstructor(ABC):
             
             time.sleep(10)
             for i in tqdm(range(self.start_data_load, self.end_data_load, self.saving_batch_size), desc=" Loding Graphs From File "):
+                print(f'i: {i}, min_j: {min(i + self.saving_batch_size, self.end_data_load)}')
                 self.load_data_range(i, min(i + self.saving_batch_size, self.end_data_load))
                 print("after loading data and pass")
         else:
@@ -196,16 +197,29 @@ class GraphConstructor(ABC):
         for i in range(start, end):
             data_list.append(self.to_graph_indexed(
                 self.raw_data[i - self.start_data_load]))
+        for grp in data_list:
+            if grp is None:
+                print("graph is None")
         torch.save(data_list, path.join(
             self.save_path, f'{start}_{end}_compressed.pt'))
 
     def load_all_data_comppressed(self):
         self.load_var()
+        loaded_graphs = []
+        for i in tqdm(range(self.start_data_load, self.end_data_load), desc=" Creating Graphs "):
+                if i % self.saving_batch_size == 0:
+                    if i != self.start_data_load:
+                        graphs_list = torch.load(path.join(self.save_path, f'{save_start}_{save_start + self.saving_batch_size}_compressed.pt'))
+                        loaded_graphs.extend(graphs_list)
+                        save_start = i
+                
+        graphs_list = torch.load(path.join(self.save_path, f'{save_start}_{save_start + self.saving_batch_size}_compressed.pt'))
+        loaded_graphs.extend(graphs_list)
+
         for i in range(self.var.graph_num):
             if i % 100 == 0:
                 print(f'data loading {i}')
-            self._graphs[i] = self.prepare_loaded_data(torch.load(
-                path.join(self.save_path, f'{self.var.graphs_name[i]}_compressed.pt')))
+            self._graphs[i] = self.prepare_loaded_data(loaded_graphs[i])
 
     def load_data_range(self, start: int, end: int):
         print(f"data path: {path.join(self.save_path, f'{start}_{end}_compressed.pt')}")

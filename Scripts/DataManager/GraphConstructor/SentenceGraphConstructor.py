@@ -44,8 +44,10 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
         # farsi
         self.nlp = fasttext.load_model(self.var.nlp_pipeline)
 
-        self.token_lemma = stanza.Pipeline(
-            "fa", download_method=DownloadMethod.REUSE_RESOURCES)
+        self.token_lemma = config.token_lemma
+
+        self.word_ids = self.get_word_by_id()
+
     def to_graph(self, text: str):
 
         # farsi
@@ -153,11 +155,10 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
         words = torch.zeros(
             (len(graph['word'].x), self.nlp.get_dimension()), dtype=torch.float32)
 
-        word_ids = self.get_word_by_id()
         for i in range(len(graph['word'].x)):
-            if word_ids.get(int(graph['word'].x[i])) is not None:
+            if self.word_ids.get(int(graph['word'].x[i])) is not None:
                 words[i] = torch.tensor(
-                    self.nlp.get_word_vector(word_ids[int(graph['word'].x[i])]))
+                    self.nlp.get_word_vector(self.word_ids[int(graph['word'].x[i])]))
         graph['word'].x = words
         if self.use_general_node:
             graph = self._add_multiple_general_nodes(

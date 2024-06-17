@@ -43,11 +43,12 @@ class DependencyGraphConstructor(GraphConstructor):
 
         # farsi
         self.nlp = fasttext.load_model(self.var.nlp_pipeline)
-        self.token_lemma = stanza.Pipeline(
-            "fa", download_method=DownloadMethod.REUSE_RESOURCES)
+        self.token_lemma = config.token_lemma
 
         self.dependencies = ['acl', 'acl:relcl', 'advcl', 'advcl:relcl', 'advmod', 'advmod:emph', 'advmod:lmod', 'amod', 'appos', 'aux', 'aux:pass', 'case', 'cc', 'cc:preconj', 'ccomp', 'clf', 'compound', 'compound:lvc', 'compound:prt', 'compound:redup', 'compound:svc', 'conj', 'cop', 'csubj', 'csubj:outer', 'csubj:pass', 'dep', 'det', 'det:numgov', 'det:nummod', 'det:poss', 'discourse',
                              'dislocated', 'expl', 'expl:impers', 'expl:pass', 'expl:pv', 'fixed', 'flat', 'flat:foreign', 'flat:name', 'goeswith', 'iobj', 'list', 'mark', 'nmod', 'nmod:poss', 'nmod:tmod', 'nsubj', 'nsubj:outer', 'nsubj:pass', 'nummod', 'nummod:gov', 'obj', 'obl', 'obl:agent', 'obl:arg', 'obl:lmod', 'obl:tmod', 'orphan', 'parataxis', 'punct', 'reparandum', 'root', 'vocative', 'xcomp']
+        
+        self.word_ids = self.get_word_by_id()
 
     def to_graph(self, text: str):
         doc = []
@@ -198,11 +199,10 @@ class DependencyGraphConstructor(GraphConstructor):
             words = torch.zeros(
                 (len(graph['word'].x), self.nlp.get_dimension()), dtype=torch.float32)
 
-            word_ids = self.get_word_by_id()
             for i in range(len(graph['word'].x)):
-                if word_ids.get(int(graph['word'].x[i])) is not None:
+                if self.word_ids.get(int(graph['word'].x[i])) is not None:
                     words[i] = torch.tensor(
-                        self.nlp.get_word_vector(word_ids[int(graph['word'].x[i])]))
+                        self.nlp.get_word_vector(self.word_ids[int(graph['word'].x[i])]))
             graph['word'].x = words
             graph['dep'].x = self.__build_initial_dependency_vectors(
                 len(self.dependencies))

@@ -22,6 +22,9 @@ from torch.utils.data.dataset import random_split, Subset
 import torch
 from Scripts.DataManager.Datasets.GraphConstructorDataset import GraphConstructorDataset, GraphConstructorDatasetRanged
 
+from stanza.pipeline.core import DownloadMethod
+import stanza
+
 
 class DigiKalaGraphDataModule(GraphDataModule):
 
@@ -55,16 +58,28 @@ class DigiKalaGraphDataModule(GraphDataModule):
 
     def load_labels(self):
         self.train_df = pd.read_csv(
-            path.join(self.config.root, self.train_data_path))
+            path.join(self.config.root, self.train_data_path), header=None)
         self.test_df = pd.read_csv(
-            path.join(self.config.root, self.test_data_path))
-        self.train_df.columns = ['Text', 'Score', 'Suggestion']
-        self.test_df.columns = ['Text', 'Score', 'Suggestion']
-        # self.train_df['Text'] = self.train_df['Score'].astype(str) + ' ' +  self.train_df['Text'].astype(str)
-        # self.test_df['Text'] = self.test_df['Score'].astype(str) + ' ' +  self.test_df['Text'].astype(str)
-        self.train_df = self.train_df[['Suggestion', 'Text']]
-        self.test_df = self.test_df[['Suggestion', 'Text']]
+            path.join(self.config.root, self.test_data_path), header=None)
+        self.train_df.columns = ['Text0', 'Score', 'Suggestion']
+        self.test_df.columns = ['Text0', 'Score', 'Suggestion']
+        # self.train_df['Text'] = self.train_df['Score'].astype(str) + ' ' +  self.train_df['Text0'].astype(str)
+        # self.test_df['Text'] = self.test_df['Score'].astype(str) + ' ' +  self.test_df['Text0'].astype(str)
+        self.train_df = self.train_df[['Suggestion', 'Text0']]
+        self.test_df = self.test_df[['Suggestion', 'Text0']]
+        
+
         self.df = pd.concat([self.train_df, self.test_df])
+        texts2 = []
+        nlp = stanza.Pipeline("fa", download_method=DownloadMethod.REUSE_RESOURCES, processors="tokenize")
+        for row in self.df.Text0.values:
+            doc = nlp(row)
+            tokens = [t.text for sent in doc.sentences for t in sent.tokens]
+            while len(tokens)<2:
+                tokens.append("#")
+            texts2.append(' '.join(tokens))
+        self.df['Text'] = texts2
+
         self.end_data_load = self.end_data_load if self.end_data_load > 0 else self.df.shape[
             0]
         self.end_data_load = self.end_data_load if self.end_data_load < self.df.shape[
