@@ -15,10 +15,6 @@ import torch
 import numpy as np
 import os
 
-import stanza
-import fasttext
-from stanza.pipeline.core import DownloadMethod
-
 
 class TagsGraphConstructor(GraphConstructor):
 
@@ -34,11 +30,10 @@ class TagsGraphConstructor(GraphConstructor):
             .__init__(texts, self._Variables(), save_path, config, load_preprocessed_data,
                       naming_prepend, use_compression, start_data_load, end_data_load)
         self.settings = {"tokens_tag_weight": 1, "token_token_weight": 2}
-        self.var.nlp_pipeline = self.config.fa.pipeline
         self.var.graph_num = len(self.raw_data)
 
         # farsi
-        self.nlp = fasttext.load_model(self.var.nlp_pipeline)
+        self.nlp = config.nlp
 
         self.token_lemma = config.token_lemma
         self.tags = ['NOUN', 'DET', 'PROPN', 'NUM', 'VERB', 'PART', 'PRON',

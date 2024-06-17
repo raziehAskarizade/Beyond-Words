@@ -4,6 +4,7 @@ import json
 from os import path
 import stanza
 from stanza.pipeline.core import DownloadMethod
+import fasttext
 
 
 class Config:
@@ -28,6 +29,9 @@ class Config:
 
         if 'datasets' in config_data:
             self.datasets = Datasets(config_data['datasets'])
+
+        self.nlp_pipeline = self.fa.pipeline
+        self.nlp = fasttext.load_model(self.nlp_pipeline)
 
 # farsi
 

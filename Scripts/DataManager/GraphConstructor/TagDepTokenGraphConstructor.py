@@ -10,7 +10,6 @@ import os
 from typing import List, Dict, Tuple
 
 import stanza
-import fasttext
 import copy
 from stanza.pipeline.core import DownloadMethod
 
@@ -32,12 +31,10 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         self.use_sentence_nodes = use_sentence_nodes
         self.use_general_node = use_general_node
 
-        self.var.nlp_pipeline = self.config.fa.pipeline
-
         self.var.graph_num = len(self.raw_data)
 
         # farsi
-        self.nlp = fasttext.load_model(self.var.nlp_pipeline)
+        self.nlp = config.nlp
 
         self.token_lemma = stanza.Pipeline(
             "fa", download_method=DownloadMethod.REUSE_RESOURCES, processors=["tokenize", "lemma", "pos"])

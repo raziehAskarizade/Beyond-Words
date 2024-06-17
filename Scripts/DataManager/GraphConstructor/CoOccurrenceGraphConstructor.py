@@ -16,10 +16,6 @@ import torch
 import numpy as np
 import os
 
-import stanza
-import fasttext
-from stanza.pipeline.core import DownloadMethod
-
 
 class CoOccurrenceGraphConstructor(GraphConstructor):
 
@@ -32,11 +28,10 @@ class CoOccurrenceGraphConstructor(GraphConstructor):
                  load_preprocessed_data=False, naming_prepend='', use_compression=True, start_data_load=0, end_data_load=-1):
         super(CoOccurrenceGraphConstructor, self)\
             .__init__(texts, self._Variables(), save_path, config, load_preprocessed_data, naming_prepend, use_compression, start_data_load, end_data_load)
-        self.var.nlp_pipeline = self.config.fa.pipeline
         self.var.graph_num = len(self.raw_data)
 
         # farsi
-        self.nlp = fasttext.load_model(self.var.nlp_pipeline)
+        self.nlp = config.nlp
         self.token_lemma = config.token_lemma
 
         self.word_ids = self.get_word_by_id()

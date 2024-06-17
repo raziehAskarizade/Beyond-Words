@@ -16,11 +16,6 @@ import torch
 import numpy as np
 import os
 
-# farsi
-import fasttext
-import stanza
-from stanza.pipeline.core import DownloadMethod
-
 
 class DependencyGraphConstructor(GraphConstructor):
 
@@ -38,11 +33,10 @@ class DependencyGraphConstructor(GraphConstructor):
         self.settings = {"tokens_dep_weight": 1,
                          "dep_tokens_weight": 1, "token_token_weight": 2}
         self.use_node_dependencies = use_node_dependencies
-        self.var.nlp_pipeline = self.config.fa.pipeline
         self.var.graph_num = len(self.raw_data)
 
         # farsi
-        self.nlp = fasttext.load_model(self.var.nlp_pipeline)
+        self.nlp = config.nlp
         self.token_lemma = config.token_lemma
 
         self.dependencies = ['acl', 'acl:relcl', 'advcl', 'advcl:relcl', 'advmod', 'advmod:emph', 'advmod:lmod', 'amod', 'appos', 'aux', 'aux:pass', 'case', 'cc', 'cc:preconj', 'ccomp', 'clf', 'compound', 'compound:lvc', 'compound:prt', 'compound:redup', 'compound:svc', 'conj', 'cop', 'csubj', 'csubj:outer', 'csubj:pass', 'dep', 'det', 'det:numgov', 'det:nummod', 'det:poss', 'discourse',

@@ -16,10 +16,7 @@ import numpy as np
 import os
 
 # farsi
-import fasttext
-import stanza
 import copy
-from stanza.pipeline.core import DownloadMethod
 
 
 class SentenceGraphConstructor(SequentialGraphConstructor):
@@ -38,11 +35,10 @@ class SentenceGraphConstructor(SequentialGraphConstructor):
         self.settings = {"token_sentence_weight": 1,
                          "token_token_weight": 2, "general_sentence_weight": 2}
         self.use_general_node = use_general_node
-        self.var.nlp_pipeline = self.config.fa.pipeline
         self.var.graph_num = len(self.raw_data)
 
         # farsi
-        self.nlp = fasttext.load_model(self.var.nlp_pipeline)
+        self.nlp = config.nlp
 
         self.token_lemma = config.token_lemma
 
