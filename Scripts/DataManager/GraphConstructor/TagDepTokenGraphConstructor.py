@@ -113,7 +113,7 @@ class TagDepTokenGraphConstructor(GraphConstructor):
         sentence_word_edge_attr = []
         word_sentence_edge_attr = []
         if self.use_general_node:
-            for i, _x in enumerate(doc[1:]):
+            for i, _x in enumerate(doc[0]):
                 # connecting sentences to general node
                 sentence_general_edge_index.append([i, 0])
                 general_sentence_edge_index.append([0, i])

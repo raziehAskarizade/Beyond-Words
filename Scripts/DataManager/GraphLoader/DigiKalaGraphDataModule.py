@@ -67,15 +67,15 @@ class DigiKalaGraphDataModule(GraphDataModule):
         # self.test_df['Text'] = self.test_df['Score'].astype(str) + ' ' +  self.test_df['Text0'].astype(str)
         self.train_df = self.train_df[['Suggestion', 'Text0']]
         self.test_df = self.test_df[['Suggestion', 'Text0']]
-        
 
         self.df = pd.concat([self.train_df, self.test_df])
         texts2 = []
-        nlp = stanza.Pipeline("fa", download_method=DownloadMethod.REUSE_RESOURCES, processors="tokenize")
+        nlp = stanza.Pipeline(
+            "fa", download_method=DownloadMethod.REUSE_RESOURCES, processors="tokenize")
         for row in self.df.Text0.values:
             doc = nlp(row)
             tokens = [t.text for sent in doc.sentences for t in sent.tokens]
-            while len(tokens)<2:
+            while len(tokens) < 2:
                 tokens.append("#")
             texts2.append(' '.join(tokens))
         self.df['Text'] = texts2
@@ -162,7 +162,7 @@ class DigiKalaGraphDataModule(GraphDataModule):
         self.__train_dataloader, self.__test_dataloader, self.__val_dataloader = datamodule.__train_dataloader, datamodule.__test_dataloader, datamodule.__val_dataloader
         self.set_active_graph(datamodule.active_key)
 
-    def set_active_graph(self, graph_type: TextGraphType = TextGraphType.CO_OCCURRENCE):
+    def set_active_graph(self, graph_type: TextGraphType = TextGraphType.FULL):
         assert graph_type in self.dataset, 'The provided key is not valid'
         self.active_key = graph_type
         sample_graph = self.graph_constructors[self.active_key].get_first()
@@ -207,10 +207,6 @@ class DigiKalaGraphDataModule(GraphDataModule):
     def __set_graph_constructors(self, graph_type: TextGraphType):
         graph_type = copy(graph_type)
         graph_constructors: Dict[TextGraphType, GraphConstructor] = {}
-        if TextGraphType.CO_OCCURRENCE in graph_type:
-            graph_constructors[TextGraphType.CO_OCCURRENCE] = self.__get_co_occurrence_graph(
-            )
-            graph_type = graph_type - TextGraphType.CO_OCCURRENCE
 
         tag_dep_seq_sent = TextGraphType.DEPENDENCY | TextGraphType.TAGS | TextGraphType.SEQUENTIAL | TextGraphType.SENTENCE
         if tag_dep_seq_sent in graph_type:

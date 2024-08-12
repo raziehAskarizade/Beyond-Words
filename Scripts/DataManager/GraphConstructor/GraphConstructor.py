@@ -21,13 +21,13 @@ from Scripts.Utils.GraphUtilities import reweight_hetero_graph
 import time
 
 class TextGraphType(Flags):
-    CO_OCCURRENCE = 1
-    DEPENDENCY = 2
-    SEQUENTIAL = 4
-    TAGS = 8
-    SENTENCE = 16
+    # CO_OCCURRENCE = 1
+    DEPENDENCY = 1
+    SEQUENTIAL = 2
+    TAGS = 4
+    SENTENCE = 8
+    SENTIMENT = 16
     FULL = 31
-    SENTIMENT = 32
 
 
 class GraphConstructor(ABC):
