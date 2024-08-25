@@ -3,7 +3,6 @@
 from typing import Any
 import torch
 import torchmetrics
-from pytorch_lightning.utilities.types import OptimizerLRScheduler
 import lightning as L
 from abc import abstractmethod
 
@@ -61,7 +60,7 @@ class BaseLightningModel(L.LightningModule):
         labels = labels.to(self.device)
         return self(data)
 
-    def configure_optimizers(self) -> OptimizerLRScheduler:
+    def configure_optimizers(self):
         if self.lr_scheduler is None:
             return self.optimizer
         
