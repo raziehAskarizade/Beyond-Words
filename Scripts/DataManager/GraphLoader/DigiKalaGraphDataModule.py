@@ -1,4 +1,4 @@
-# Omid Davar @ 2023
+# Omid Davar @ 2023 - Fardin Rastakhi @ 2024
 
 from copy import copy
 import numpy as np
@@ -24,17 +24,19 @@ from Scripts.DataManager.Datasets.GraphConstructorDataset import GraphConstructo
 
 from stanza.pipeline.core import DownloadMethod
 import stanza
+import time
 
 
 class DigiKalaGraphDataModule(GraphDataModule):
 
-    def __init__(self, config: Config, test_size=0.2, val_size=0.2, num_workers=2, drop_last=True, train_data_path='', test_data_path='', graphs_path='', batch_size=32, device='cpu', shuffle=False, start_data_load=0, end_data_load=-1, graph_type: TextGraphType = TextGraphType.FULL, load_preprocessed_data=True, reweights={}, removals=[], *args, **kwargs):
+    def __init__(self, config: Config, test_size=0.2, val_size=0.2, num_workers=2, drop_last=True, train_data_path='', test_data_path='', graphs_path='', batch_size=32, device='cpu', shuffle=False, start_data_load=0, end_data_load=-1, graph_type: TextGraphType = TextGraphType.FULL, load_preprocessed_data=True, reweights={}, removals=[], max_length=1024, *args, **kwargs):
         # Sample reweight [None,None,None,None,[(("word" , "seq" , "word") , 5)]]
         # 5 is weight in above code
         # (("word" , "seq" , "word") , 5)
         super(DigiKalaGraphDataModule, self)\
             .__init__(config, device, test_size, val_size, *args, **kwargs)
 
+        self.max_length = max_length
         self.device = device
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -57,10 +59,9 @@ class DigiKalaGraphDataModule(GraphDataModule):
         self.load_preprocessed_data = load_preprocessed_data
 
     def load_labels(self):
-        self.train_df = pd.read_csv(
-            path.join(self.config.root, self.train_data_path), header=None)
-        self.test_df = pd.read_csv(
-            path.join(self.config.root, self.test_data_path), header=None)
+        print("load labels")
+        self.train_df = pd.read_csv(path.join(self.config.root, self.train_data_path), header=None)
+        self.test_df = pd.read_csv(path.join(self.config.root, self.test_data_path), header=None)
         self.train_df.columns = ['Text0', 'Score', 'Suggestion']
         self.test_df.columns = ['Text0', 'Score', 'Suggestion']
         # self.train_df['Text'] = self.train_df['Score'].astype(str) + ' ' +  self.train_df['Text0'].astype(str)
@@ -69,9 +70,9 @@ class DigiKalaGraphDataModule(GraphDataModule):
         self.test_df = self.test_df[['Suggestion', 'Text0']]
 
         self.df = pd.concat([self.train_df, self.test_df])
+        self.df['Text0'] = self.df['Text0'].apply(lambda t: t[:self.max_length])
         texts2 = []
-        nlp = stanza.Pipeline(
-            "fa", download_method=DownloadMethod.REUSE_RESOURCES, processors="tokenize")
+        nlp = stanza.Pipeline("fa", download_method=DownloadMethod.REUSE_RESOURCES, processors="tokenize")
         for row in self.df.Text0.values:
             doc = nlp(row)
             tokens = [t.text for sent in doc.sentences for t in sent.tokens]
@@ -105,14 +106,18 @@ class DigiKalaGraphDataModule(GraphDataModule):
         # graph_constructor = self.graph_constructors[TextGraphType.CO_OCCURRENCE]
 
     def load_graphs(self):
-        self.graph_constructors = self.__set_graph_constructors(
-            self.graph_type)
-
+        print("load graphs")
+        st = time.time()
+        self.graph_constructors = self.__set_graph_constructors(self.graph_type)
+        print(f"init Completed: {(time.time() - st)/1000:.4f} ms")
+        st = time.time()
         self.dataset, self.num_node_features = {}, {}
         self.__train_dataset, self.__val_dataset, self.__test_dataset = {}, {}, {}
         self.__train_dataloader, self.__test_dataloader, self.__val_dataloader = {}, {}, {}
         for key in self.graph_constructors:
             self.graph_constructors[key].setup(self.load_preprocessed_data)
+            print(f"setup Completed: {(time.time() - st)/1000:.4f} ms")
+            st = time.time()
             # reweighting
             if key in self.reweights:
                 for r in self.reweights[key]:
@@ -213,60 +218,56 @@ class DigiKalaGraphDataModule(GraphDataModule):
             graph_constructors[tag_dep_seq_sent] = self.__get_full_graph()
             graph_type = graph_type - tag_dep_seq_sent
 
-        tag_dep_seq = TextGraphType.DEPENDENCY | TextGraphType.TAGS | TextGraphType.SEQUENTIAL
-        if tag_dep_seq in graph_type:
-            graph_constructors[tag_dep_seq] = self.__get_dep_and_tag_graph()
-            graph_type = graph_type - tag_dep_seq
+        # tag_dep_seq = TextGraphType.DEPENDENCY | TextGraphType.TAGS | TextGraphType.SEQUENTIAL
+        # if tag_dep_seq in graph_type:
+        #     graph_constructors[tag_dep_seq] = self.__get_dep_and_tag_graph()
+        #     graph_type = graph_type - tag_dep_seq
 
-        if TextGraphType.DEPENDENCY in graph_type:
-            graph_constructors[TextGraphType.DEPENDENCY] = self.__get_dependency_graph(
-            )
-            graph_type = graph_type - \
-                (TextGraphType.DEPENDENCY | TextGraphType.SEQUENTIAL)
+        # if TextGraphType.DEPENDENCY in graph_type:
+        #     graph_constructors[TextGraphType.DEPENDENCY] = self.__get_dependency_graph()
+        #     graph_type = graph_type - \
+        #         (TextGraphType.DEPENDENCY | TextGraphType.SEQUENTIAL)
 
-        if TextGraphType.TAGS in graph_type:
-            graph_constructors[TextGraphType.TAGS] = self.__get_tags_graph()
-            graph_type = graph_type - \
-                (TextGraphType.TAGS | TextGraphType.SEQUENTIAL)
+        # if TextGraphType.TAGS in graph_type:
+        #     graph_constructors[TextGraphType.TAGS] = self.__get_tags_graph()
+        #     graph_type = graph_type - \
+        #         (TextGraphType.TAGS | TextGraphType.SEQUENTIAL)
 
-        if TextGraphType.SENTENCE in graph_type:
-            graph_constructors[TextGraphType.SENTENCE] = self.__get_sentence_graph(
-            )
-            graph_type = graph_type - \
-                (TextGraphType.SENTENCE | TextGraphType.SEQUENTIAL)
+        # if TextGraphType.SENTENCE in graph_type:
+        #     graph_constructors[TextGraphType.SENTENCE] = self.__get_sentence_graph()
+        #     graph_type = graph_type - \
+        #         (TextGraphType.SENTENCE | TextGraphType.SEQUENTIAL)
 
-        if TextGraphType.SEQUENTIAL in graph_type:
-            graph_constructors[TextGraphType.SEQUENTIAL] = self.__get_sequential_graph(
-            )
-            graph_type = graph_type - TextGraphType.SEQUENTIAL
+        # if TextGraphType.SEQUENTIAL in graph_type:
+        #     graph_constructors[TextGraphType.SEQUENTIAL] = self.__get_sequential_graph()
+        #     graph_type = graph_type - TextGraphType.SEQUENTIAL
 
-        if TextGraphType.SENTIMENT in graph_type:
-            graph_constructors[TextGraphType.SENTIMENT] = self.__get_sentiment_graph(
-            )
-            graph_type = graph_type - TextGraphType.SENTIMENT
+        if TextGraphType.FULL_SENTIMENT in graph_type:
+            graph_constructors[TextGraphType.FULL_SENTIMENT] = self.__get_sentiment_graph()
+            graph_type = graph_type - TextGraphType.FULL_SENTIMENT
 
         return graph_constructors
 
-    def __get_co_occurrence_graph(self):
-        return CoOccurrenceGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'co_occ'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load)
+    # def __get_co_occurrence_graph(self):
+    #     return CoOccurrenceGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'co_occ'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load)
 
-    def __get_dependency_graph(self):
-        return DependencyGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'dep'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_node_dependencies=True)
+    # def __get_dependency_graph(self):
+    #     return DependencyGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'dep'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_node_dependencies=True)
 
-    def __get_sequential_graph(self):
-        return SequentialGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'seq_gen'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_general_node=True)
+    # def __get_sequential_graph(self):
+    #     return SequentialGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'seq_gen'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_general_node=True)
 
-    def __get_dep_and_tag_graph(self):
-        return TagDepTokenGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'dep_and_tag'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=False, use_general_node=True)
+    # def __get_dep_and_tag_graph(self):
+    #     return TagDepTokenGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'dep_and_tag'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=False, use_general_node=True)
 
-    def __get_tags_graph(self):
-        return TagsGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'tags'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load)
+    # def __get_tags_graph(self):
+    #     return TagsGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'tags'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load)
 
     def __get_full_graph(self):
         return TagDepTokenGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'full'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=True, use_general_node=True)
 
-    def __get_sentence_graph(self):
-        return SentenceGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'sents_gen'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_general_node=True)
+    # def __get_sentence_graph(self):
+        # return SentenceGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'sents_gen'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_general_node=True)
 
     def __get_sentiment_graph(self):
         return SentimentGraphConstructor(self.df['Text'][:self.end_data_load], path.join(self.graphs_path, 'sentiment'), self.config, load_preprocessed_data=True, naming_prepend='graph', start_data_load=self.start_data_load, end_data_load=self.end_data_load, use_sentence_nodes=True, use_general_node=True)
