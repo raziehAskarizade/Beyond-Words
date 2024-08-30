@@ -1,4 +1,4 @@
-# Fardin Rastakhiz, Omid Davar @ 2023
+# Fardin Rastakhiz, Omid Davar @ 2023 -  Fardin Rastakhi @ 2024
 
 import os
 import pickle
@@ -26,8 +26,8 @@ class TextGraphType(Flags):
     SEQUENTIAL = 2
     TAGS = 4
     SENTENCE = 8
-    SENTIMENT = 16
-    FULL = 31
+    FULL = 15
+    FULL_SENTIMENT = 16
 
 
 class GraphConstructor(ABC):
@@ -76,29 +76,25 @@ class GraphConstructor(ABC):
         if load_preprocessed_data:
             self.load_var()
             
-            print(f'self.start_data_load: {self.start_data_load}')
-            print(f'self.end_data_load: {self.end_data_load}')
-            print(f'self.saving_batch_size: {self.saving_batch_size}')
+            # print(f'self.start_data_load: {self.start_data_load}')
+            # print(f'self.end_data_load: {self.end_data_load}')
+            # print(f'self.saving_batch_size: {self.saving_batch_size}')
             
-            time.sleep(10)
+            time.sleep(0.5)
             for i in tqdm(range(self.start_data_load, self.end_data_load, self.saving_batch_size), desc=" Loding Graphs From File "):
-                print(f'i: {i}, min_j: {min(i + self.saving_batch_size, self.end_data_load)}')
                 self.load_data_range(i, min(i + self.saving_batch_size, self.end_data_load))
-                print("after loading data and pass")
         else:
             # save the content
             save_start = self.start_data_load
             for i in tqdm(range(self.start_data_load, self.end_data_load), desc=" Creating Graphs "):
                 if i % self.saving_batch_size == 0:
                     if i != self.start_data_load:
-                        self.save_data_range(
-                            save_start, save_start + self.saving_batch_size)
+                        self.save_data_range(save_start, save_start + self.saving_batch_size)
                         save_start = i
                 # self._graphs[i] = self.to_graph(self.raw_data[i])
                 self.var.graphs_name[i] = f'{self.naming_prepend}_{i}'
             self.save_data_range(save_start, self.end_data_load)
-            self.var.save_to_file(os.path.join(
-                self.save_path, f'{self.naming_prepend}_var.txt'))
+            self.var.save_to_file(os.path.join(self.save_path, f'{self.naming_prepend}_var.txt'))
             # Load the content
             self._graphs: List = [None for r in range(self.end_data_load)]
             self.setup(load_preprocessed_data=True)
@@ -195,13 +191,11 @@ class GraphConstructor(ABC):
     def save_data_range(self, start: int, end: int):
         data_list = []
         for i in range(start, end):
-            data_list.append(self.to_graph_indexed(
-                self.raw_data[i - self.start_data_load]))
+            data_list.append(self.to_graph_indexed(self.raw_data[i - self.start_data_load]))
         for grp in data_list:
             if grp is None:
                 print("graph is None")
-        torch.save(data_list, path.join(
-            self.save_path, f'{start}_{end}_compressed.pt'))
+        torch.save(data_list, path.join(self.save_path, f'{start}_{end}_compressed.pt'))
 
     def load_all_data_comppressed(self):
         self.load_var()
