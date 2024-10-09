@@ -36,9 +36,11 @@ class TagsGraphConstructor(GraphConstructor):
         self.nlp = config.nlp
 
         self.token_lemma = config.token_lemma
-        self.tags = ['NOUN', 'DET', 'PROPN', 'NUM', 'VERB', 'PART', 'PRON',
-                     'SCONJ', 'ADJ', 'ADP', 'PUNCT', 'ADV', 'AUX', 'SYM', 'INTJ', 'CCONJ', 'X']
+        # self.tags = ['NOUN', 'DET', 'PROPN', 'NUM', 'VERB', 'PART', 'PRON',
+        #              'SCONJ', 'ADJ', 'ADP', 'PUNCT', 'ADV', 'AUX', 'SYM', 'INTJ', 'CCONJ', 'X']
 
+        self.tags = ['NOUN', 'ADJ', 'VERB', 'ADP', 'ADV',
+                     'CCONJ', 'PRON', 'SCONJ', 'PROPN', 'DET', 'AUX']
         self.word_ids = self.get_word_by_id()
 
     def to_graph(self, text: str):
